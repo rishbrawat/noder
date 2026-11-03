@@ -12,10 +12,10 @@ import {
   applyNodeChanges, 
   applyEdgeChanges 
 } from 'reactflow';
-import { BlueprintGeneration, NodeData } from '../types/BlueprintTypes';
+import { BlueprintGeneration, NodeData, UEGraphType } from '../types/BlueprintTypes';
 
 export interface BlueprintState {
-  // Blueprint data
+  // Blueprint active canvas data
   nodes: Node<NodeData>[];
   edges: Edge[];
   selectedNodes: Node<NodeData>[];
@@ -23,6 +23,11 @@ export interface BlueprintState {
   blueprintName: string;
   blueprintDescription: string;
   isLoading: boolean;
+
+  // Multi-graph Unreal Tabs
+  activeGraphType: UEGraphType;
+  subGraphs: Record<string, { nodes: Node<NodeData>[]; edges: Edge[] }>;
+  switchGraph: (graphType: UEGraphType) => void;
   
   // Node methods
   onNodesChange: OnNodesChange;
@@ -49,6 +54,23 @@ export interface BlueprintState {
   setIsLoading: (isLoading: boolean) => void;
 }
 
+const createDefaultConstructionScript = (): Node<NodeData>[] => [
+  {
+    id: 'cs-root-event',
+    type: 'customNode',
+    position: { x: 120, y: 150 },
+    data: {
+      title: 'Construction Script',
+      subtitle: 'Construction',
+      nodeType: 'event',
+      color: '#15803D',
+      inputs: [],
+      outputs: [{ name: 'Then', type: 'exec' }],
+      description: 'Initializes actor components and parameters at edit time and spawn time.',
+    },
+  },
+];
+
 // Create a store with Zustand
 export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   // Initial state
@@ -59,6 +81,46 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   blueprintName: 'New Blueprint',
   blueprintDescription: '',
   isLoading: false,
+
+  // Multi-graph Unreal Tabs
+  activeGraphType: 'EventGraph',
+  subGraphs: {
+    EventGraph: { nodes: [], edges: [] },
+    ConstructionScript: { nodes: createDefaultConstructionScript(), edges: [] },
+  },
+
+  switchGraph: (targetType: UEGraphType) => {
+    const state = get();
+    if (state.activeGraphType === targetType) return;
+
+    // Persist current graph before switching
+    const currentSubGraphs = {
+      ...state.subGraphs,
+      [state.activeGraphType]: {
+        nodes: state.nodes,
+        edges: state.edges,
+      },
+    };
+
+    let targetGraph = currentSubGraphs[targetType];
+    if (!targetGraph) {
+      if (targetType === 'ConstructionScript') {
+        targetGraph = { nodes: createDefaultConstructionScript(), edges: [] };
+      } else {
+        targetGraph = { nodes: [], edges: [] };
+      }
+      currentSubGraphs[targetType] = targetGraph;
+    }
+
+    set({
+      activeGraphType: targetType,
+      subGraphs: currentSubGraphs,
+      nodes: targetGraph.nodes,
+      edges: targetGraph.edges,
+      selectedNodes: [],
+      selectedEdges: [],
+    });
+  },
   
   // Node methods
   onNodesChange: (changes: NodeChange[]) => {
@@ -76,7 +138,6 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   removeNode: (nodeId: string) => {
     set({
       nodes: get().nodes.filter((node) => node.id !== nodeId),
-      // Also remove any connected edges
       edges: get().edges.filter(
         (edge) => edge.source !== nodeId && edge.target !== nodeId
       ),
@@ -155,6 +216,11 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   
   clearBlueprint: () => {
     set({ 
+      activeGraphType: 'EventGraph',
+      subGraphs: {
+        EventGraph: { nodes: [], edges: [] },
+        ConstructionScript: { nodes: createDefaultConstructionScript(), edges: [] },
+      },
       nodes: [],
       edges: [],
       selectedNodes: [],
@@ -164,6 +230,11 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   
   loadBlueprint: (blueprint: BlueprintGeneration) => {
     set({
+      activeGraphType: 'EventGraph',
+      subGraphs: {
+        EventGraph: { nodes: blueprint.nodes, edges: blueprint.edges },
+        ConstructionScript: { nodes: createDefaultConstructionScript(), edges: [] },
+      },
       blueprintName: blueprint.name,
       blueprintDescription: blueprint.description,
       nodes: blueprint.nodes,
@@ -176,4 +247,4 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   setIsLoading: (isLoading: boolean) => {
     set({ isLoading });
   },
-})); 
+}));

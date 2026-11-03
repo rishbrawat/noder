@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuArrowLeft, LuLoader } from 'react-icons/lu';
+import { LuArrowLeft, LuLoader, LuZap } from 'react-icons/lu';
 import { FcGoogle } from 'react-icons/fc';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -12,8 +12,14 @@ const LoginPage: React.FC = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, loginWithGoogle, loginAsGuest, resetPassword, isFirebaseConfigured } = useAuth();
   const navigate = useNavigate();
+
+  // Handle guest / offline login
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    navigate('/projects');
+  };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,9 +94,15 @@ const LoginPage: React.FC = () => {
         <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-600/20 to-secondary-600/20 rounded-lg blur-md"></div>
         
         <div className="relative bg-[#0A0F1C]/90 backdrop-blur-md p-8 rounded-lg border border-gray-800/50 shadow-xl">
-          <h2 className="text-2xl font-bold text-center mb-6 text-white">
+          <h2 className="text-2xl font-bold text-center mb-2 text-white">
             {showResetPassword ? 'Reset Password' : 'Log in to Noder'}
           </h2>
+
+          {!isFirebaseConfigured && (
+            <div className="mb-6 p-2.5 rounded bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-xs flex items-center justify-center gap-1.5 text-center">
+              <span>🟢 Local Standalone Mode Active (Firebase cloud sync optional)</span>
+            </div>
+          )}
           
           {error && (
             <div className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-2 rounded-md mb-6 text-sm">
@@ -107,6 +119,16 @@ const LoginPage: React.FC = () => {
           {!showResetPassword ? (
             // Login form
             <>
+              {/* Quick 1-click guest button for immediate access */}
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                className="w-full mb-5 py-2.5 px-4 rounded-md font-medium text-sm transition-all duration-200 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-200 border border-amber-500/40 hover:border-amber-400 flex items-center justify-center gap-2 shadow-sm"
+              >
+                <LuZap className="w-4 h-4 text-amber-400 animate-pulse" />
+                <span>Continue as Guest Architect (Instant Dev Access)</span>
+              </button>
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
@@ -232,4 +254,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage; 
+export default LoginPage;

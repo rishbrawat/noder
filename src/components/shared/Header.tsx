@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LuBrainCircuit, LuLogOut, LuUser, LuMenu, LuX } from "react-icons/lu";
+import { LuBrainCircuit, LuLogOut, LuUser, LuMenu, LuX, LuSun, LuMoon } from "react-icons/lu";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const Header: React.FC = () => {
-  const [scrollY, setScrollY] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { currentUser, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrollY(window.scrollY);
-      setIsScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > 40);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -31,7 +31,6 @@ const Header: React.FC = () => {
     }
   };
 
-  // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -49,103 +48,108 @@ const Header: React.FC = () => {
   }, [isMobileMenuOpen]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4">
+    <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 px-4 font-sans">
       <div
         className={`relative transition-all duration-300 ease-in-out ${
-          isScrolled ? "w-[90%] max-w-4xl" : "w-[80%] max-w-3xl"
+          isScrolled ? "w-full max-w-5xl" : "w-full max-w-6xl"
         }`}
       >
-        {/* Glow effect */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-secondary-700/30 to-accent-600/30 rounded-full blur-md opacity-70"></div>
-
-        {/* Main header container */}
-        <div className="relative bg-[#0A0F1C]/90 backdrop-blur-md border border-secondary-800/40 rounded-full py-2.5 px-4 flex justify-between items-center shadow-lg">
+        {/* Main header bar */}
+        <div className="relative bg-white/95 dark:bg-noder-dark/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-4 flex justify-between items-center shadow-xl">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-secondary-600/30 rounded-full blur-md group-hover:bg-secondary-500/50 transition-all duration-300"></div>
-              <div className="relative bg-[#0A0F1C] p-1.5 rounded-full border border-secondary-600/30 group-hover:border-secondary-500/50 transition-all duration-300">
-                <LuBrainCircuit
-                  size={22}
-                  className="text-secondary-400 group-hover:scale-110 transition-transform duration-300"
-                />
+            <Link to="/" className="flex items-center space-x-2.5 group">
+              <div className="p-1.5 rounded-md bg-black dark:bg-white text-white dark:text-black group-hover:bg-gold-500 dark:group-hover:bg-gold-500 transition-colors">
+                <LuBrainCircuit size={18} />
               </div>
-            </div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-secondary-300 via-accent-200 to-primary-300 bg-clip-text text-transparent">
-              Noder
-            </h1>
+              <span className="text-base font-bold tracking-tight text-zinc-900 dark:text-white">
+                Noder
+              </span>
+            </Link>
           </div>
 
-          {/* Mobile menu toggle */}
-          <button
-            className="mobile-menu-toggle md:hidden text-white p-1 rounded-full hover:bg-white/10 transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <LuX size={24} /> : <LuMenu size={24} />}
-          </button>
+          {/* Desktop Navigation & Actions */}
+          <div className="flex items-center space-x-4">
+            <nav className="hidden md:flex space-x-5 items-center text-xs font-medium">
+              <Link
+                to="/"
+                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                Home
+              </Link>
+              <Link
+                to="/projects"
+                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                Projects
+              </Link>
+              <Link
+                to="/roadmap"
+                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                Roadmap
+              </Link>
+              <Link
+                to="/issues"
+                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                Issues
+              </Link>
+            </nav>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-6 items-center">
-            <Link
-              to="/"
-              className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 hover:text-shadow text-sm font-medium"
-            >
-              Home
-            </Link>
-            <Link
-              to="/projects"
-              className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 hover:text-shadow text-sm font-medium"
-            >
-              Projects
-            </Link>
-            <Link
-              to="/roadmap"
-              className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 hover:text-shadow text-sm font-medium"
-            >
-              Roadmap
-            </Link>
-            {/* <Link to="/issues" className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 hover:text-shadow text-sm font-medium">Issues</Link> */}
+            <div className="h-4 w-[1px] bg-zinc-200 dark:bg-zinc-800 hidden md:block"></div>
 
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle Theme"
+              className="p-1.5 rounded-md text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? (
+                <LuSun className="w-4 h-4 text-gold-400" />
+              ) : (
+                <LuMoon className="w-4 h-4 text-zinc-700" />
+              )}
+            </button>
+
+            {/* User Profile / Login */}
             {currentUser ? (
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center space-x-2 focus:outline-none"
                 >
-                  <div className="relative">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full opacity-70 blur-[1px]"></div>
-                    <div className="relative bg-[#0A0F1C] p-1.5 rounded-full border border-primary-500/50">
-                      {currentUser.photoURL ? (
-                        <img
-                          src={currentUser.photoURL}
-                          alt={currentUser.displayName || "User"}
-                          className="w-6 h-6 rounded-full"
-                        />
-                      ) : (
-                        <LuUser className="w-5 h-5 text-primary-300" />
-                      )}
-                    </div>
+                  <div className="p-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300">
+                    <LuUser className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-sm font-medium text-gray-200 hidden sm:block">
-                    {currentUser.displayName || "User"}
+                  <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200 hidden sm:block max-w-[120px] truncate">
+                    {currentUser.displayName || currentUser.email?.split('@')[0] || "Architect"}
                   </span>
                 </button>
 
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-[#0A0F1C] border border-gray-800 rounded-lg shadow-lg py-1 z-50">
-                    <div className="px-4 py-2 border-b border-gray-800">
-                      <p className="text-sm font-medium text-gray-200">
-                        {currentUser.displayName || "User"}
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-noder-dark border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 animate-fade-in text-xs font-sans">
+                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                      <p className="font-semibold text-zinc-900 dark:text-white truncate">
+                        {currentUser.displayName || "Architect"}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">
+                      <p className="text-[11px] text-zinc-500 truncate">
                         {currentUser.email}
                       </p>
                     </div>
+                    <Link
+                      to="/projects"
+                      onClick={() => setShowUserMenu(false)}
+                      className="block px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      My Workspaces
+                    </Link>
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 flex items-center"
+                      className="w-full text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center transition-colors"
                     >
-                      <LuLogOut className="mr-2 text-gray-400" size={14} />
+                      <LuLogOut className="mr-2" size={13} />
                       Sign out
                     </button>
                   </div>
@@ -154,79 +158,53 @@ const Header: React.FC = () => {
             ) : (
               <Link
                 to="/login"
-                className="px-4 py-1.5 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-primary-500/20 transition-all duration-300"
+                className="px-3 py-1.5 text-xs font-semibold rounded bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black transition-colors"
               >
-                Sign In
+                Log In
               </Link>
             )}
-          </nav>
+
+            {/* Mobile menu toggle */}
+            <button
+              className="mobile-menu-toggle md:hidden text-zinc-700 dark:text-zinc-300 p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <LuX size={18} /> : <LuMenu size={18} />}
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile dropdown menu */}
         {isMobileMenuOpen && (
-          <div className="mobile-menu absolute top-full left-0 right-0 mt-2 bg-[#0A0F1C]/95 backdrop-blur-md border border-secondary-800/40 rounded-xl py-3 px-4 shadow-xl z-50">
-            <nav className="flex flex-col space-y-3">
-              <Link
-                to="/"
-                className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 py-2 px-3 rounded-lg hover:bg-white/5"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
-              <Link
-                to="/projects"
-                className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 py-2 px-3 rounded-lg hover:bg-white/5"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Projects
-              </Link>
-              <Link
-                to="/roadmap"
-                className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 py-2 px-3 rounded-lg hover:bg-white/5"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Roadmap
-              </Link>
-              <Link
-                to="/issues"
-                className="text-secondary-200/90 hover:text-secondary-100 transition-all duration-200 py-2 px-3 rounded-lg hover:bg-white/5"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Issues
-              </Link>
-
-              {currentUser ? (
-                <>
-                  <div className="border-t border-gray-800 my-2"></div>
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-gray-200">
-                      {currentUser.displayName || "User"}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {currentUser.email}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 flex items-center rounded-lg"
-                  >
-                    <LuLogOut className="mr-2 text-gray-400" size={14} />
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/login"
-                  className="mt-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-primary-500/20 transition-all duration-300 text-center"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Sign In
-                </Link>
-              )}
-            </nav>
+          <div className="mobile-menu md:hidden mt-2 bg-white dark:bg-noder-dark border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xl animate-fade-in text-xs space-y-2">
+            <Link
+              to="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-1 text-zinc-700 dark:text-zinc-300 hover:text-gold-500"
+            >
+              Home
+            </Link>
+            <Link
+              to="/projects"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-1 text-zinc-700 dark:text-zinc-300 hover:text-gold-500"
+            >
+              Projects
+            </Link>
+            <Link
+              to="/roadmap"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-1 text-zinc-700 dark:text-zinc-300 hover:text-gold-500"
+            >
+              Roadmap
+            </Link>
+            <Link
+              to="/issues"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block py-1 text-zinc-700 dark:text-zinc-300 hover:text-gold-500"
+            >
+              Issues
+            </Link>
           </div>
         )}
       </div>

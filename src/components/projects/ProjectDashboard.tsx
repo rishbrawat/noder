@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { LuPlus, LuTrash, LuFolder, LuLoader } from 'react-icons/lu';
+import { Link } from 'react-router-dom';
+import { LuPlus, LuTrash, LuFolder, LuLoader, LuArrowRight, LuSparkles } from 'react-icons/lu';
 import Header from '../shared/Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectStore } from '../../store/projectStore';
-import { Project } from '../../services/firestore';
 import FirebaseErrorAlert from '../shared/FirebaseErrorAlert';
 
 const ProjectDashboard: React.FC = () => {
@@ -22,36 +21,26 @@ const ProjectDashboard: React.FC = () => {
     createProject: createProjectAction,
     deleteProject: deleteProjectAction
   } = useProjectStore();
-  
-  const navigate = useNavigate();
 
-  // Fetch user's projects on component mount
   useEffect(() => {
     if (currentUser) {
       fetchProjects(currentUser.uid);
     }
   }, [currentUser, fetchProjects]);
 
-  // Handle creating a new project
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newProjectName.trim() || !currentUser) {
-      return;
-    }
+    if (!newProjectName.trim() || !currentUser) return;
 
     try {
       setIsCreating(true);
-      
       const newProject = {
         name: newProjectName.trim(),
-        description: newProjectDescription.trim() || null,
+        description: newProjectDescription.trim() || undefined,
         userId: currentUser.uid
       };
 
       await createProjectAction(newProject);
-      
-      // Reset form
       setNewProjectName('');
       setNewProjectDescription('');
       setIsModalOpen(false);
@@ -62,174 +51,194 @@ const ProjectDashboard: React.FC = () => {
     }
   };
 
-  // Handle deleting a project
   const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteProjectAction(projectId);
-    } catch (err) {
-      console.error('Error deleting project:', err);
+    if (window.confirm('Delete this workspace? All saved blueprint graphs will be removed.')) {
+      try {
+        await deleteProjectAction(projectId);
+      } catch (err) {
+        console.error('Error deleting project:', err);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-[#070B14] to-[#0A1428] text-white">
+    <div className="min-h-screen bg-zinc-50 dark:bg-noder-black text-zinc-900 dark:text-zinc-100 font-sans transition-colors duration-200">
       <Header />
       
-      <main className="container mx-auto px-4 pt-32 pb-20">
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-bold text-white">My Projects</h1>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-gold-500"></span>
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">UE5 Workspace Dashboard</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              Unreal Engine Projects
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+              Author and compile AI gameplay graphs for direct Unreal Engine 5 integration.
+            </p>
+          </div>
+          
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 px-4 py-2 rounded-md font-medium transition-colors"
+            className="flex items-center space-x-2 bg-gold-500 hover:bg-gold-400 text-black px-4 py-2.5 rounded-lg font-semibold text-xs transition-all shadow-md shadow-gold-500/20"
           >
-            <LuPlus className="mr-2" />
-            New Project
+            <LuPlus size={16} />
+            <span>New Workspace</span>
           </button>
         </div>
-        
-        {projectError && projectError.includes('Firebase permission') ? (
-          <FirebaseErrorAlert 
-            message={projectError} 
-            onDismiss={() => useProjectStore.getState().setError(null)} 
-          />
-        ) : projectError && (
-          <div className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded-md mb-6">
-            {projectError}
-          </div>
+
+        {projectError && (
+          <FirebaseErrorAlert message={projectError} />
         )}
-        
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <LuLoader className="animate-spin text-blue-500 mr-3" size={24} />
-            <span>Loading projects...</span>
+
+        {isLoading && projects.length === 0 ? (
+          <div className="flex flex-col justify-center items-center h-64 space-y-3">
+            <LuLoader className="animate-spin text-gold-500" size={32} />
+            <p className="text-xs font-mono text-zinc-500">Loading workspaces...</p>
           </div>
         ) : projects.length === 0 ? (
-          <div className="bg-[#0A0F1C]/60 backdrop-blur-sm border border-gray-800/50 rounded-xl p-10 text-center">
-            <div className="flex justify-center">
-              <div className="bg-blue-900/20 p-4 rounded-full mb-4">
-                <LuFolder className="text-blue-400" size={40} />
-              </div>
-            </div>
-            <h2 className="text-xl font-semibold mb-2">No Projects Yet</h2>
-            <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              You haven't created any projects yet. Create your first project to get started with Noder.
+          <div className="text-center py-16 bg-white dark:bg-noder-dark rounded-xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
+            <LuFolder className="mx-auto text-zinc-400 dark:text-zinc-600 mb-3" size={40} />
+            <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-200">No workspaces yet</h3>
+            <p className="text-xs text-zinc-500 mt-1 mb-6 max-w-sm mx-auto">
+              Create your first project workspace to start generating and compiling Blueprint graphs.
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 px-5 py-3 rounded-md font-medium transition-colors"
+              className="inline-flex items-center space-x-2 bg-gold-500 hover:bg-gold-400 text-black px-4 py-2 rounded-md font-semibold text-xs transition-colors shadow-sm"
             >
-              Create Project
+              <LuPlus size={16} />
+              <span>Create Workspace</span>
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {projects.map((project) => (
-              <div
+              <div 
                 key={project.id}
-                className="relative bg-[#0A0F1C]/60 backdrop-blur-sm border border-gray-800/50 rounded-xl overflow-hidden hover:border-gray-700/70 transition-all duration-300 hover:shadow-xl hover:shadow-blue-900/5 group"
+                className="group relative bg-white dark:bg-noder-panel rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-gold-500/60 dark:hover:border-gold-500/60 transition-all duration-200 shadow-sm hover:shadow-xl overflow-hidden flex flex-col justify-between"
               >
-                <Link
-                  to={`/projects/${project.id}`}
-                  className="block p-6"
-                >
-                  <div className="mb-4 w-12 h-12 rounded-lg bg-gradient-to-br from-blue-900/40 to-indigo-900/40 flex items-center justify-center">
-                    <LuFolder className="text-blue-400 group-hover:text-blue-300 transition-colors" size={24} />
+                <Link to={`/projects/${project.id}`} className="block p-5 flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-gold-500 group-hover:bg-gold-500 group-hover:text-black transition-colors">
+                      <LuFolder size={20} />
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border border-zinc-200 dark:border-zinc-800">
+                      UE5 Blueprint
+                    </span>
                   </div>
-                  <h3 className="font-semibold text-lg mb-1 group-hover:text-blue-300 transition-colors">
+
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-gold-500 dark:group-hover:text-gold-400 transition-colors mb-1.5 truncate">
                     {project.name}
                   </h3>
-                  {project.description && (
-                    <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+                  
+                  {project.description ? (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-4 leading-relaxed">
                       {project.description}
                     </p>
+                  ) : (
+                    <p className="text-xs text-zinc-400 italic mb-4">No description provided</p>
                   )}
-                  <p className="text-gray-500 text-xs">
-                    {project.createdAt 
-                      ? (project.createdAt.seconds 
-                          ? new Date(project.createdAt.seconds * 1000).toLocaleDateString() 
-                          : new Date(project.createdAt).toLocaleDateString())
-                      : 'Recently created'}
-                  </p>
+                  
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-3 border-t border-zinc-100 dark:border-zinc-900">
+                    <span className="font-mono">
+                      {project.createdAt 
+                        ? ((project.createdAt as any).toDate 
+                            ? (project.createdAt as any).toDate().toLocaleDateString()
+                            : (project.createdAt as any).seconds 
+                            ? new Date((project.createdAt as any).seconds * 1000).toLocaleDateString() 
+                            : 'Active')
+                        : 'Active'}
+                    </span>
+                    <span className="flex items-center gap-1 font-medium text-gold-600 dark:text-gold-400 group-hover:translate-x-1 transition-transform">
+                      Open Studio <LuArrowRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </Link>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     handleDeleteProject(project.id!);
                   }}
-                  className="absolute top-4 right-4 p-2 bg-red-900/20 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/40"
-                  title="Delete project"
+                  className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all"
+                  title="Delete workspace"
                 >
-                  <LuTrash size={16} />
+                  <LuTrash size={14} />
                 </button>
               </div>
             ))}
           </div>
         )}
       </main>
-      
-      {/* Create Project Modal */}
+
+      {/* New Project Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0A0F1C] border border-gray-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="p-6">
-              <h3 className="text-xl font-semibold mb-4">Create New Project</h3>
-              
-              <form onSubmit={handleCreateProject}>
-                <div className="mb-4">
-                  <label htmlFor="project-name" className="block text-sm font-medium text-gray-300 mb-1">
-                    Project Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="project-name"
-                    type="text"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    className="w-full bg-[#0F1521] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50"
-                    placeholder="My Awesome Project"
-                    required
-                  />
-                </div>
-                <div className="mb-6">
-                  <label htmlFor="project-description" className="block text-sm font-medium text-gray-300 mb-1">
-                    Description <span className="text-gray-500">(optional)</span>
-                  </label>
-                  <textarea
-                    id="project-description"
-                    value={newProjectDescription}
-                    onChange={(e) => setNewProjectDescription(e.target.value)}
-                    className="w-full bg-[#0F1521] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50"
-                    placeholder="Describe your project..."
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-md border border-gray-700 hover:border-gray-600 text-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreating || !newProjectName.trim()}
-                    className="bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-500 hover:to-secondary-500 px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center"
-                  >
-                    {isCreating ? (
-                      <>
-                        <LuLoader className="animate-spin mr-2" />
-                        Creating...
-                      </>
-                    ) : 'Create Project'}
-                  </button>
-                </div>
-              </form>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-noder-dark rounded-lg border border-zinc-200 dark:border-zinc-800 p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <LuSparkles className="w-5 h-5 text-gold-500" />
+              <h2 className="text-base font-bold text-zinc-900 dark:text-white">Create New UE5 Workspace</h2>
             </div>
+            
+            <form onSubmit={handleCreateProject} className="space-y-4">
+              <div>
+                <label htmlFor="projectName" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Workspace Name *
+                </label>
+                <input
+                  type="text"
+                  id="projectName"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-zinc-900 dark:text-white focus:outline-none focus:border-gold-500"
+                  placeholder="e.g. CombatGameplayFramework"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="projectDescription" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Description (Optional)
+                </label>
+                <textarea
+                  id="projectDescription"
+                  value={newProjectDescription}
+                  onChange={(e) => setNewProjectDescription(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-zinc-900 dark:text-white focus:outline-none focus:border-gold-500"
+                  placeholder="e.g. Character locomotion, double-jump, projectile weapon logic"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-xs rounded border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  disabled={isCreating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold rounded bg-gold-500 hover:bg-gold-400 text-black transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  disabled={isCreating || !newProjectName.trim()}
+                >
+                  {isCreating ? (
+                    <>
+                      <LuLoader className="animate-spin w-3.5 h-3.5" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <span>Create Workspace</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -237,4 +246,4 @@ const ProjectDashboard: React.FC = () => {
   );
 };
 
-export default ProjectDashboard; 
+export default ProjectDashboard;

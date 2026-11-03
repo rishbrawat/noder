@@ -1,14 +1,111 @@
 /* Hide ReactFlow attribution text */
-.react-flow__attribution {
-  display: none !important;
-}
-
-/* Also apply this to any possible variation */
-[data-reactflow-attribution] {
-  display: none !important;
-}
-
-/* Additional selector to ensure it gets hidden */
+.react-flow__attribution,
+[data-reactflow-attribution],
 .react-flow__container .react-flow__attribution {
   display: none !important;
-} 
+}
+
+/* Elevate Controls and MiniMap above the bottom Output Log console */
+.react-flow__controls {
+  bottom: 44px !important;
+  left: 14px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #E4E4E7 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+}
+
+.dark .react-flow__controls {
+  bottom: 44px !important;
+  left: 14px !important;
+  background-color: #18181B !important;
+  border: 1px solid #27272A !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls-button {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E4E4E7 !important;
+  color: #52525B !important;
+  fill: #52525B !important;
+  transition: all 0.15s ease !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #F4F4F5 !important;
+  color: #D97706 !important;
+  fill: #D97706 !important;
+}
+
+.dark .react-flow__controls-button {
+  background-color: #18181B !important;
+  border-bottom: 1px solid #27272A !important;
+  color: #D4D4D8 !important;
+  fill: #D4D4D8 !important;
+  transition: all 0.15s ease !important;
+}
+
+.dark .react-flow__controls-button:hover {
+  background-color: #27272A !important;
+  color: #F59E0B !important;
+  fill: #F59E0B !important;
+}
+
+.dark .react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+/* Sleek Unreal Engine MiniMap */
+.react-flow__minimap {
+  bottom: 44px !important;
+  right: 14px !important;
+}
+
+.dark .react-flow__minimap {
+  bottom: 44px !important;
+  right: 14px !important;
+  background-color: rgba(18, 18, 20, 0.85) !important;
+  border: 1px solid #27272A !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.6) !important;
+  stroke: #CA8A04 !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Authentic Unreal Engine Gold Marquee Selection Box (Mouse-Hold Drag) */
+.react-flow__selection {
+  background-color: rgba(202, 138, 4, 0.08) !important;
+  border: 1.5px dashed #CA8A04 !important;
+  border-radius: 2px !important;
+}
+
+.dark .react-flow__selection {
+  background-color: rgba(234, 179, 8, 0.12) !important;
+  border: 1.5px dashed #F59E0B !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2) !important;
+}
+
+/* Smooth Canvas & Multi-Node Interaction Cursors */
+.react-flow__pane {
+  cursor: crosshair;
+}
+
+.react-flow__pane.dragging {
+  cursor: grabbing !important;
+}
+
+.react-flow__node {
+  cursor: grab;
+}
+
+.react-flow__node.dragging {
+  cursor: grabbing !important;
+}

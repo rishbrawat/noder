@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import {
   LuCheck,
-  LuCircle,
   LuSquare,
-  LuX,
   LuChevronDown,
   LuChevronRight,
 } from "react-icons/lu";
@@ -49,83 +47,73 @@ const IssuesPage: React.FC = () => {
         },
         {
           id: "ui-2",
-          title: "Inconsistent button styles",
+          title: "Node color contrast in dark mode",
           description:
-            "Action buttons across the application have inconsistent styling and hover effects.",
+            "Some blueprint node headers have poor text contrast against certain background colors.",
           status: "open",
-          createdAt: new Date("2025-04-03"),
+          createdAt: new Date("2025-04-05"),
           priority: "medium",
         },
       ],
     },
     {
-      id: "llm-issues",
-      title: "LLM Issues",
+      id: "ai-generation",
+      title: "AI Generation",
       icon: <LuSquare className="text-purple-400" size={20} />,
       description:
-        "Problems with AI model responses, prompt handling, and blueprint generation.",
+        "Problems with natural language processing and blueprint generation accuracy.",
       issues: [
         {
-          id: "llm-1",
-          title: "Blueprint generation timeout",
+          id: "ai-1",
+          title: "Complex logic generation failures",
           description:
-            "Some complex blueprint generation requests time out when they require too many tokens.",
-          status: "open",
-          createdAt: new Date("2025-04-05"),
+            "Requests with multiple conditional branches sometimes generate disconnected nodes.",
+          status: "in-progress",
+          createdAt: new Date("2025-03-28"),
           priority: "critical",
         },
         {
-          id: "llm-2",
-          title: "Inconsistent node naming",
+          id: "ai-2",
+          title: "Inaccurate pin types for custom structures",
           description:
-            "The LLM sometimes generates nodes with inconsistent naming conventions.",
+            "Vector and rotator pins are sometimes generated as generic object references.",
           status: "resolved",
-          createdAt: new Date("2025-04-01"),
-          priority: "low",
-        },
-      ],
-    },
-    {
-      id: "backend-issues",
-      title: "Backend Issues",
-      icon: <LuSquare className="text-green-400" size={20} />,
-      description:
-        "Server-side problems, database issues, and API endpoint errors.",
-      issues: [
-        {
-          id: "be-1",
-          title: "Firebase authentication fails occasionally",
-          description:
-            "Users report random authentication failures when server load is high.",
-          status: "in-progress",
-          createdAt: new Date("2025-04-04"),
+          createdAt: new Date("2025-03-15"),
           priority: "high",
         },
       ],
     },
     {
-      id: "integration-issues",
-      title: "Integration Issues",
-      icon: <LuSquare className="text-amber-400" size={20} />,
+      id: "export-import",
+      title: "Export & Import",
+      icon: <LuSquare className="text-green-400" size={20} />,
       description:
-        "Problems with third-party services, API integrations, and external tools.",
+        "Issues related to Unreal Engine compatibility and file exports.",
       issues: [
         {
-          id: "int-1",
-          title: "Gemini API rate limiting",
+          id: "exp-1",
+          title: "JSON export format incompatibility",
           description:
-            "We hit rate limits during peak usage times, causing generation failures.",
-          status: "open",
-          createdAt: new Date("2025-04-06"),
-          priority: "medium",
+            "Exported JSON files cannot be directly imported into Unreal Engine 5 without an intermediate plugin.",
+          status: "in-progress",
+          createdAt: new Date("2025-04-01"),
+          priority: "critical",
+        },
+        {
+          id: "exp-2",
+          title: "Missing node GUIDs on clipboard paste",
+          description:
+            "Direct copy-paste to Unreal Engine requires unique 32-character GUIDs for proper graph compilation.",
+          status: "resolved",
+          createdAt: new Date("2025-04-08"),
+          priority: "high",
         },
       ],
     },
   ];
 
   // State for issue categories
-  const [categories, setCategories] =
-    useState<IssueCategory[]>(initialCategories);
+  const [categories] = useState<IssueCategory[]>(initialCategories);
 
   // State for expanded categories
   const [expandedCategories, setExpandedCategories] = useState<
@@ -148,181 +136,134 @@ const IssuesPage: React.FC = () => {
     }));
   };
 
-  // Get status badge
-  const getStatusBadge = (status: IssueItem["status"]) => {
-    switch (status) {
-      case "open":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-            Open
-          </span>
-        );
-      case "in-progress":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">
-            In Progress
-          </span>
-        );
-      case "resolved":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-            Resolved
-          </span>
-        );
-      default:
-        return null;
+  const getPriorityBadgeClass = (priority: IssueItem["priority"]) => {
+    switch (priority) {
+      case "critical":
+        return "bg-red-900/50 text-red-300 border-red-700/50";
+      case "high":
+        return "bg-orange-900/50 text-orange-300 border-orange-700/50";
+      case "medium":
+        return "bg-yellow-900/50 text-yellow-300 border-yellow-700/50";
+      case "low":
+        return "bg-green-900/50 text-green-300 border-green-700/50";
     }
   };
 
-  // Get priority badge
-  const getPriorityBadge = (priority: IssueItem["priority"]) => {
-    switch (priority) {
-      case "low":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30">
-            Low
-          </span>
-        );
-      case "medium":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">
-            Medium
-          </span>
-        );
-      case "high":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30">
-            High
-          </span>
-        );
-      case "critical":
-        return (
-          <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-            Critical
-          </span>
-        );
-      default:
-        return null;
+  const getStatusBadgeClass = (status: IssueItem["status"]) => {
+    switch (status) {
+      case "open":
+        return "bg-blue-900/50 text-blue-300 border-blue-700/50";
+      case "in-progress":
+        return "bg-purple-900/50 text-purple-300 border-purple-700/50";
+      case "resolved":
+        return "bg-emerald-900/50 text-emerald-300 border-emerald-700/50";
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#070B15] text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       <Header />
-      <div className="max-w-6xl mx-auto px-4 py-10 pt-32">
-        <div className="flex items-center mb-2">
-          <LuSquare className="text-purple-500 mr-3" size={28} />
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-secondary-300 via-accent-200 to-primary-300 bg-clip-text text-transparent">
-            Issues Tracker
-          </h1>
-        </div>
-        <p className="text-gray-400 mb-4 pl-[44px]">
-          Track and manage UI, LLM, backend, and integration issues.
-        </p>
 
-        {/* Filter toggle */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">
+            Known Issues & Bugs
+          </h1>
+          <p className="text-gray-400 mt-2">
+            Track reported problems, current fixes, and resolved bugs.
+          </p>
+        </div>
+
+        {/* Filter controls */}
         <div className="flex justify-end mb-6">
           <button
             onClick={() => setShowResolved(!showResolved)}
-            className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
-              showResolved
-                ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                : "bg-gray-800 text-gray-400 border border-gray-700"
-            }`}
+            className="flex items-center space-x-2 text-sm text-gray-300 bg-gray-800/80 px-3 py-1.5 rounded-lg border border-gray-700 hover:bg-gray-700 transition-colors"
           >
-            <LuCheck size={16} className="mr-1.5" />
-            <span>{showResolved ? "Showing Resolved" : "Hide Resolved"}</span>
+            <LuCheck
+              size={16}
+              className={showResolved ? "text-green-400" : "text-gray-500"}
+            />
+            <span>Show resolved issues</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-6">
+        {/* Categories and Issues list */}
+        <div className="space-y-6">
           {categories.map((category) => {
-            // Filter issues based on showResolved state
-            const filteredIssues = showResolved
-              ? category.issues
-              : category.issues.filter((issue) => issue.status !== "resolved");
+            const visibleIssues = category.issues.filter(
+              (issue) => showResolved || issue.status !== "resolved"
+            );
+
+            if (visibleIssues.length === 0) return null;
 
             return (
               <div
                 key={category.id}
-                className="bg-[#0A0F1C] rounded-lg overflow-hidden border border-gray-800"
+                className="bg-gray-800/40 rounded-xl border border-gray-700/60 overflow-hidden"
               >
-                {/* Category Header */}
                 <div
-                  className="p-4 flex items-center justify-between cursor-pointer border-b border-gray-800 hover:bg-[#0D1220] transition-colors"
                   onClick={() => toggleCategory(category.id)}
+                  className="p-4 bg-gray-800/80 flex items-center justify-between cursor-pointer hover:bg-gray-800 transition-colors"
                 >
                   <div className="flex items-center space-x-3">
                     {category.icon}
                     <div>
-                      <h2 className="text-lg font-semibold">
-                        {category.title}
-                      </h2>
-                      <p className="text-sm text-gray-400">
-                        {category.description}
-                      </p>
+                      <h2 className="font-semibold text-lg">{category.title}</h2>
+                      <p className="text-xs text-gray-400">{category.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="bg-[#161F33] px-2 py-1 rounded-md text-sm">
-                      {filteredIssues.length} issue
-                      {filteredIssues.length !== 1 ? "s" : ""}
+                  <div className="flex items-center space-x-2 text-gray-400">
+                    <span className="text-xs">
+                      {visibleIssues.length} issues
                     </span>
                     {expandedCategories[category.id] ? (
-                      <LuChevronDown size={20} className="text-gray-400" />
+                      <LuChevronDown size={18} />
                     ) : (
-                      <LuChevronRight size={20} className="text-gray-400" />
+                      <LuChevronRight size={18} />
                     )}
                   </div>
                 </div>
 
-                {/* Issues List */}
                 {expandedCategories[category.id] && (
-                  <div className="p-4">
-                    {filteredIssues.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredIssues.map((issue) => (
-                          <div
-                            key={issue.id}
-                            className="bg-[#0D1220] p-4 rounded-lg border border-gray-800/50 hover:border-gray-700 transition-colors"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <h3 className="font-medium flex-1">
-                                {issue.title}
-                              </h3>
-                              <div className="flex space-x-2">
-                                {getPriorityBadge(issue.priority)}
-                                {getStatusBadge(issue.status)}
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-400 mb-3">
+                  <div className="divide-y divide-gray-700/40">
+                    {visibleIssues.map((issue) => (
+                      <div key={issue.id} className="p-4 hover:bg-gray-800/20 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-medium text-gray-200">
+                              {issue.title}
+                            </h3>
+                            <p className="text-sm text-gray-400 mt-1">
                               {issue.description}
                             </p>
-                            <div className="text-xs text-gray-500">
-                              Created: {issue.createdAt.toLocaleDateString()}
-                            </div>
                           </div>
-                        ))}
+                          <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
+                            <span
+                              className={`text-xs px-2.5 py-0.5 rounded-full border ${getPriorityBadgeClass(
+                                issue.priority
+                              )}`}
+                            >
+                              {issue.priority}
+                            </span>
+                            <span
+                              className={`text-xs px-2.5 py-0.5 rounded-full border ${getStatusBadgeClass(
+                                issue.status
+                              )}`}
+                            >
+                              {issue.status}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <LuSquare size={24} className="mx-auto mb-2" />
-                        <p>No issues found in this category</p>
-                      </div>
-                    )}
-
-                    {/* Add New Issue Button */}
-                    <button className="mt-4 w-full border border-dashed border-gray-700 hover:border-blue-500 text-gray-400 hover:text-blue-400 p-3 rounded-lg flex items-center justify-center transition-colors">
-                      <span className="mr-2 font-bold text-lg">+</span>
-                      <span>Add New Issue</span>
-                    </button>
+                    ))}
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-      </div>
+      </main>
     </div>
   );
 };

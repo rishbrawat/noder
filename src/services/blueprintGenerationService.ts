@@ -1,87 +1,59 @@
-// import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
-import { LLMBlueprintData } from '../types/BlueprintTypes';
+import { Node, Edge } from 'reactflow';
+import { NodeData } from '../types/BlueprintTypes';
+import { compileGraphToT3D, T3DCompileResult } from '../utils/ueT3DCompiler';
+import { saveBlueprintTemplate } from './firestore';
 
-// Get the API URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-if (!API_BASE_URL) {
-  console.warn('VITE_API_URL is not set in environment variables');
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 /**
- * Service for generating blueprint data by calling our backend API.
+ * Service for generating, exporting, and persisting blueprint data.
  */
 export class BlueprintGenerationService {
   /**
    * Generate blueprint data by sending query to backend API.
-   * @param query The natural language query.
-   * @returns The raw JSON string response from the backend.
-   * @throws If the API call fails or returns an error status.
    */
-  static async generateFromQuery(query: string): Promise<string> {
+  static async generateFromQuery(query: string, idToken?: string, targetClass: string = 'Actor'): Promise<string> {
     if (!query.trim()) {
       throw new Error('Query cannot be empty');
     }
 
-    console.log("[BlueprintGenerationService] Sending query to API:", query);
-    
-    // Use the API URL from environment variables
     const backendUrl = `${API_BASE_URL}/api/generateBlueprint`;
-    console.log(`[BlueprintGenerationService] Using backend URL: ${backendUrl}`);
+    console.log(`[BlueprintGenerationService] Sending query to ${backendUrl}:`, query);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
 
     try {
       const response = await fetch(backendUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ 
-          query,
-          format: 'json' // Explicitly request JSON response
-        }),
+        headers,
+        body: JSON.stringify({ query, targetClass }),
       });
 
-      // Get the response text first for logging
       const responseText = await response.text();
-      console.log("[BlueprintGenerationService] Raw API Response:", responseText);
 
       if (!response.ok) {
-        console.error("[BlueprintGenerationService] API Error Response:", responseText);
+        let errorMessage = `API request failed with status ${response.status}`;
         try {
-          // Try to extract detailed error information if available
           const errorJson = JSON.parse(responseText);
           if (errorJson.error) {
-            console.error("[BlueprintGenerationService] Error details:", errorJson);
-            
-            // Check if we have more detailed diagnostic info
-            if (errorJson.raw_error) {
-              console.error("[BlueprintGenerationService] JSON Parse Error:", errorJson.raw_error);
-            }
-            
-            if (errorJson.response_preview) {
-              console.error("[BlueprintGenerationService] Response Preview:", errorJson.response_preview);
-            }
-            
-            throw new Error(`API request failed with status ${response.status}: ${errorJson.error}`);
+            errorMessage = errorJson.error;
           }
-        } catch (parseError) {
-          // If we can't parse the error as JSON, just use the raw text
-          console.error("[BlueprintGenerationService] Failed to parse error response as JSON");
+        } catch {
+          errorMessage = responseText || errorMessage;
         }
-        
-        throw new Error(`API request failed with status ${response.status}: ${responseText}`);
+        throw new Error(errorMessage);
       }
 
-      // Try to validate the response is JSON
-      try {
-        JSON.parse(responseText); // Just to validate
-        return responseText; // Return the raw text if it's valid JSON
-      } catch (parseError) {
-        console.error("[BlueprintGenerationService] Response is not valid JSON:", parseError);
-        throw new Error('API response is not valid JSON');
-      }
-
+      // Validate JSON response
+      JSON.parse(responseText);
+      return responseText;
     } catch (error) {
       console.error("[BlueprintGenerationService] API Call Error:", error);
       const message = error instanceof Error ? error.message : "Unknown error occurred";
@@ -90,18 +62,25 @@ export class BlueprintGenerationService {
   }
 
   /**
-   * Export blueprint data to Unreal format
+   * Export blueprint graph to Unreal Engine 5 T3D ASCII clipboard format.
    */
-  static async exportToUnreal(blueprint: any): Promise<string> {
-    console.log("[BlueprintGenerationService] Exporting blueprint:", blueprint);
-    return JSON.stringify(blueprint, null, 2);
+  static exportToUnreal(nodes: Node<NodeData>[], edges: Edge[]): T3DCompileResult {
+    return compileGraphToT3D(nodes, edges);
   }
 
   /**
-   * Save blueprint as a template
+   * Save blueprint graph as a template in Firestore.
    */
-  static async saveAsTemplate(blueprint: any): Promise<void> {
-    console.log("[BlueprintGenerationService] Saving blueprint as template:", blueprint);
-    // Implementation pending
+  static async saveAsTemplate(
+    blueprint: { name: string; description: string; nodes: Node<NodeData>[]; edges: Edge[] },
+    userId: string
+  ): Promise<string> {
+    return await saveBlueprintTemplate({
+      name: blueprint.name || 'Untitled Template',
+      description: blueprint.description || '',
+      content: JSON.stringify(blueprint),
+      category: 'custom',
+      userId,
+    });
   }
-} 
+}

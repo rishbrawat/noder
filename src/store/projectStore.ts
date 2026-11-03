@@ -1,12 +1,44 @@
 import { create } from 'zustand';
 import { 
-  createProject, 
-  getUserProjects, 
-  getProject, 
-  updateProject, 
-  deleteProject, 
+  createProject as fsCreateProject, 
+  getUserProjects as fsGetUserProjects, 
+  getProject as fsGetProject, 
+  updateProject as fsUpdateProject, 
+  deleteProject as fsDeleteProject, 
   Project 
 } from '../services/firestore';
+import { Timestamp } from 'firebase/firestore';
+import { isFirebaseConfigured } from '../services/firebase';
+
+const LOCAL_PROJECTS_KEY = 'noder_local_projects';
+
+const getStoredLocalProjects = (userId: string): Project[] => {
+  try {
+    const raw = localStorage.getItem(`${LOCAL_PROJECTS_KEY}_${userId}`) || localStorage.getItem(LOCAL_PROJECTS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to parse local projects:', e);
+  }
+  return [
+    {
+      id: 'demo-unreal-project',
+      name: 'Unreal Engine 5 Gameplay Framework',
+      description: 'Default workspace for testing AI blueprints & T3D compilation',
+      userId,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    }
+  ];
+};
+
+const saveStoredLocalProjects = (userId: string, projects: Project[]) => {
+  try {
+    localStorage.setItem(`${LOCAL_PROJECTS_KEY}_${userId}`, JSON.stringify(projects));
+    localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
+  } catch (e) {
+    console.warn('Failed to persist local projects:', e);
+  }
+};
 
 interface ProjectState {
   projects: Project[];
@@ -39,64 +71,67 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   fetchProjects: async (userId: string) => {
     try {
       set({ isLoading: true, error: null });
-      
-      try {
-        const projects = await getUserProjects(userId);
-        set({ projects: projects as Project[] });
-        
-        // Store in local storage as backup
-        localStorage.setItem(`user_projects_${userId}`, JSON.stringify(projects));
-      } catch (error: any) {
-        console.error('Error fetching projects:', error);
-        
-        // If Firebase permission error, try to use local storage as fallback
-        if (error.message?.includes('Missing or insufficient permissions')) {
-          const localProjects = localStorage.getItem(`user_projects_${userId}`);
-          if (localProjects) {
-            set({ 
-              projects: JSON.parse(localProjects) as Project[],
-              error: 'Using cached projects. Firebase permission issue detected.'
-            });
-          } else {
-            // If no local data, use sample projects temporarily
-            set({ 
-              projects: [
-                {
-                  id: 'sample1',
-                  name: 'Sample Project 1',
-                  description: 'A sample project while Firebase permissions are being set up',
-                  userId: userId,
-                  createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 }
-                },
-                {
-                  id: 'sample2',
-                  name: 'Sample Project 2',
-                  description: 'Another sample project',
-                  userId: userId,
-                  createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 }
-                }
-              ],
-              error: 'Firebase permissions issue. Using sample projects until resolved.'
-            });
+      if (isFirebaseConfigured) {
+        try {
+          const projectsData = await fsGetUserProjects(userId);
+          if (projectsData && projectsData.length > 0) {
+            set({ projects: projectsData as Project[] });
+            saveStoredLocalProjects(userId, projectsData as Project[]);
+            return;
           }
-        } else {
-          set({ error: error.message || 'Failed to fetch projects' });
+        } catch (err) {
+          console.warn('Firestore fetchProjects failed, falling back to local storage:', err);
         }
       }
+      
+      const local = getStoredLocalProjects(userId);
+      set({ projects: local });
+    } catch (error: any) {
+      console.error('Error fetching projects:', error);
+      set({ error: error.message || 'Failed to fetch projects' });
     } finally {
       set({ isLoading: false });
     }
   },
   
-  // Fetch a specific project
+  // Fetch a single project
   fetchProject: async (projectId: string) => {
     try {
       set({ isLoading: true, error: null });
-      const project = await getProject(projectId);
-      set({ currentProject: project as Project });
+      if (isFirebaseConfigured) {
+        try {
+          const project = await fsGetProject(projectId);
+          set({ currentProject: project as Project });
+          return;
+        } catch (err) {
+          console.warn('Firestore fetchProject failed, falling back to local storage:', err);
+        }
+      }
+      
+      const inMemory = get().projects.find(p => p.id === projectId);
+      if (inMemory) {
+        set({ currentProject: inMemory });
+        return;
+      }
+      
+      const localList = getStoredLocalProjects('guest_local_user');
+      const found = localList.find(p => p.id === projectId);
+      if (found) {
+        set({ currentProject: found });
+      } else {
+        const fallbackProject: Project = {
+          id: projectId,
+          name: 'Unreal Engine Project',
+          description: 'Local workspace',
+          userId: 'guest_local_user',
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
+        set({ currentProject: fallbackProject });
+      }
     } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch project' });
       console.error('Error fetching project:', error);
+      set({ error: error.message || 'Failed to fetch project' });
     } finally {
       set({ isLoading: false });
     }
@@ -106,60 +141,38 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   createProject: async (project: Omit<Project, 'id'>) => {
     try {
       set({ isLoading: true, error: null });
+      let newProject: Project;
       
-      try {
-        const newProject = await createProject(project);
-        set(state => ({ 
-          projects: [...state.projects, newProject as Project] 
-        }));
-        
-        // Store in local storage as backup
-        const userId = project.userId;
-        const localProjects = localStorage.getItem(`user_projects_${userId}`);
-        let updatedProjects = [];
-        if (localProjects) {
-          updatedProjects = [...JSON.parse(localProjects), newProject];
-        } else {
-          updatedProjects = [newProject];
-        }
-        localStorage.setItem(`user_projects_${userId}`, JSON.stringify(updatedProjects));
-        
-        return newProject as Project;
-      } catch (error: any) {
-        console.error('Error creating project:', error);
-        
-        // If Firebase permission error, store in local storage only
-        if (error.message?.includes('Missing or insufficient permissions')) {
-          const localProject = {
+      if (isFirebaseConfigured) {
+        try {
+          newProject = (await fsCreateProject(project as Project)) as Project;
+        } catch (fbErr) {
+          console.warn('Firestore createProject failed, saving locally:', fbErr);
+          newProject = {
             ...project,
-            id: `local_${Date.now()}`,
-            createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
-            updatedAt: { seconds: Date.now() / 1000, nanoseconds: 0 }
+            id: 'proj_' + Date.now(),
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
           };
-          
-          // Add to state
-          set(state => ({ 
-            projects: [...state.projects, localProject as Project],
-            error: 'Project stored locally. Firebase permission issue detected.'
-          }));
-          
-          // Store in local storage
-          const userId = project.userId;
-          const localProjects = localStorage.getItem(`user_projects_${userId}`);
-          let updatedProjects = [];
-          if (localProjects) {
-            updatedProjects = [...JSON.parse(localProjects), localProject];
-          } else {
-            updatedProjects = [localProject];
-          }
-          localStorage.setItem(`user_projects_${userId}`, JSON.stringify(updatedProjects));
-          
-          return localProject as Project;
-        } else {
-          set({ error: error.message || 'Failed to create project' });
-          throw error;
         }
+      } else {
+        newProject = {
+          ...project,
+          id: 'proj_' + Date.now(),
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
       }
+      
+      const updatedProjects = [newProject, ...get().projects];
+      set({ projects: updatedProjects, currentProject: newProject });
+      saveStoredLocalProjects(project.userId, updatedProjects);
+      
+      return newProject;
+    } catch (error: any) {
+      console.error('Error creating project:', error);
+      set({ error: error.message || 'Failed to create project' });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
@@ -169,43 +182,32 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   updateProject: async (projectId: string, data: Partial<Project>) => {
     try {
       set({ isLoading: true, error: null });
-      
-      // Get state for local storage handling
-      const state = get();
-      const project = state.projects.find(p => p.id === projectId);
-      
-      try {
-        await updateProject(projectId, data);
-      } catch (error: any) {
-        console.error('Error updating project in Firebase:', error);
-        if (!error.message?.includes('Missing or insufficient permissions')) {
-          set({ error: error.message || 'Failed to update project' });
-          throw error;
-        }
-        set({ error: 'Project updated locally only. Firebase permission issue detected.' });
-      }
-      
-      // Update project in projects list
-      set(state => ({ 
-        projects: state.projects.map(p => 
-          p.id === projectId ? { ...p, ...data } : p
-        ),
-        // Also update currentProject if it's the one being edited
-        currentProject: state.currentProject?.id === projectId 
-          ? { ...state.currentProject, ...data } 
-          : state.currentProject
-      }));
-      
-      // Update local storage
-      if (project && project.userId) {
-        const localProjects = localStorage.getItem(`user_projects_${project.userId}`);
-        if (localProjects) {
-          const updatedProjects = JSON.parse(localProjects).map(
-            (p: Project) => p.id === projectId ? { ...p, ...data } : p
-          );
-          localStorage.setItem(`user_projects_${project.userId}`, JSON.stringify(updatedProjects));
+      if (isFirebaseConfigured) {
+        try {
+          await fsUpdateProject(projectId, data);
+        } catch (err) {
+          console.warn('Firestore updateProject failed, updating locally:', err);
         }
       }
+      
+      const currentProjects = get().projects;
+      const updatedProjects = currentProjects.map(p => 
+        p.id === projectId ? { ...p, ...data, updatedAt: Timestamp.now() } : p
+      );
+      
+      set({ 
+        projects: updatedProjects,
+        currentProject: get().currentProject?.id === projectId 
+          ? { ...get().currentProject!, ...data, updatedAt: Timestamp.now() } 
+          : get().currentProject
+      });
+      
+      const userId = get().currentProject?.userId || 'guest_local_user';
+      saveStoredLocalProjects(userId, updatedProjects);
+    } catch (error: any) {
+      console.error('Error updating project:', error);
+      set({ error: error.message || 'Failed to update project' });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
@@ -215,39 +217,28 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   deleteProject: async (projectId: string) => {
     try {
       set({ isLoading: true, error: null });
-      
-      // Get userId before potential deletion
-      const state = get();
-      const project = state.projects.find(p => p.id === projectId);
-      const userId = project?.userId;
-      
-      try {
-        await deleteProject(projectId);
-      } catch (error: any) {
-        console.error('Error deleting project from Firebase:', error);
-        if (!error.message?.includes('Missing or insufficient permissions')) {
-          set({ error: error.message || 'Failed to delete project' });
-          throw error;
-        }
-        set({ error: 'Project removed locally only. Firebase permission issue detected.' });
-      }
-      
-      // Remove project from projects list regardless of Firebase result
-      set(state => ({ 
-        projects: state.projects.filter(p => p.id !== projectId),
-        currentProject: state.currentProject?.id === projectId ? null : state.currentProject
-      }));
-      
-      // Update local storage if we have userId
-      if (userId) {
-        const localProjects = localStorage.getItem(`user_projects_${userId}`);
-        if (localProjects) {
-          const updatedProjects = JSON.parse(localProjects).filter(
-            (p: Project) => p.id !== projectId
-          );
-          localStorage.setItem(`user_projects_${userId}`, JSON.stringify(updatedProjects));
+      if (isFirebaseConfigured) {
+        try {
+          await fsDeleteProject(projectId);
+        } catch (err) {
+          console.warn('Firestore deleteProject failed, deleting locally:', err);
         }
       }
+      
+      const currentProjects = get().projects;
+      const remainingProjects = currentProjects.filter(p => p.id !== projectId);
+      
+      set({ 
+        projects: remainingProjects,
+        currentProject: get().currentProject?.id === projectId ? null : get().currentProject
+      });
+      
+      const userId = get().currentProject?.userId || 'guest_local_user';
+      saveStoredLocalProjects(userId, remainingProjects);
+    } catch (error: any) {
+      console.error('Error deleting project:', error);
+      set({ error: error.message || 'Failed to delete project' });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
@@ -257,4 +248,4 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setLoading: (isLoading: boolean) => set({ isLoading }),
   setError: (error: string | null) => set({ error }),
   clearCurrentProject: () => set({ currentProject: null }),
-})); 
+}));

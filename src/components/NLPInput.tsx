@@ -1,34 +1,26 @@
 import React, { useState } from 'react';
 import { useBlueprint } from '../hooks/useBlueprint';
-import { LuSend, LuBrain } from 'react-icons/lu';
+import { LuSparkles, LuLoader, LuArrowRight } from 'react-icons/lu';
 
 interface NLPInputProps {
-  onGenerate?: (blueprintData: any) => void;
+  onGenerate?: (query: string) => void;
 }
 
-export const NLPInput: React.FC<NLPInputProps> = ({ 
-  onGenerate
-}) => {
+export const NLPInput: React.FC<NLPInputProps> = ({ onGenerate }) => {
   const [query, setQuery] = useState<string>('');
+  const [targetClass, setTargetClass] = useState<string>('Character');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const { loadBlueprint, isLoading } = useBlueprint();
+  const { loadBlueprint } = useBlueprint();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim() || isGenerating) return;
-    
+  const handleExecute = async (promptText: string) => {
+    if (!promptText.trim() || isGenerating) return;
+
     try {
       setIsGenerating(true);
-      
-      // Call the loadBlueprint hook function with the user query
-      await loadBlueprint(query);
-      
-      // Call onGenerate callback if provided
+      await loadBlueprint(promptText, targetClass);
       if (onGenerate) {
-        onGenerate(query);
+        onGenerate(promptText);
       }
-      
-      // Clear input after successful generation
       setQuery('');
     } catch (error) {
       console.error('Blueprint generation failed:', error);
@@ -37,28 +29,64 @@ export const NLPInput: React.FC<NLPInputProps> = ({
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleExecute(query);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="w-full">
-      <div className="relative flex items-center bg-[#1A1A1A] border border-[#333] rounded-lg shadow-lg overflow-hidden">
-        <div className="absolute left-3 flex items-center justify-center">
-          <LuBrain className="w-5 h-5 text-[#4dabf7]" />
+    <div className="w-full">
+      {/* Main Prompt Bar */}
+      <form onSubmit={handleSubmit} className="w-full">
+        <div className="relative flex items-center bg-white dark:bg-noder-panel border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-xl overflow-hidden focus-within:border-gold-500 dark:focus-within:border-gold-500 transition-colors">
+          {/* Target Class Selector */}
+          <div className="border-r border-zinc-200 dark:border-zinc-800 px-2.5 py-2.5 bg-zinc-50 dark:bg-black/40">
+            <select
+              value={targetClass}
+              onChange={(e) => setTargetClass(e.target.value)}
+              disabled={isGenerating}
+              className="bg-transparent text-xs font-mono font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none cursor-pointer"
+            >
+              <option value="Character" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Character</option>
+              <option value="Actor" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Actor</option>
+              <option value="PlayerController" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">PlayerController</option>
+              <option value="GameModeBase" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">GameModeBase</option>
+            </select>
+          </div>
+
+          {/* Text Input */}
+          <div className="relative flex-1 flex items-center">
+            <LuSparkles className="absolute left-3 w-4 h-4 text-gold-500 shrink-0" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Describe your Unreal Engine 5 gameplay mechanic (e.g., sprint toggle, projectile firing, health)..."
+              className="w-full py-2.5 pl-9 pr-3 text-xs md:text-sm font-sans bg-transparent text-zinc-900 dark:text-zinc-100 border-none focus:outline-none placeholder-zinc-400 dark:placeholder-zinc-500"
+              disabled={isGenerating}
+            />
+          </div>
+
+          {/* Generate Button */}
+          <button
+            type="submit"
+            disabled={isGenerating || !query.trim()}
+            className="px-4 py-2.5 bg-gold-500 hover:bg-gold-400 text-black font-semibold text-xs tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+          >
+            {isGenerating ? (
+              <>
+                <LuLoader className="w-3.5 h-3.5 animate-spin text-black" />
+                <span>Compiling...</span>
+              </>
+            ) : (
+              <>
+                <span>Generate</span>
+                <LuArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
         </div>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Describe what you want to create..."
-          className="flex-1 py-2 px-3 pl-10 text-sm font-sans font-medium tracking-wide bg-transparent text-white border-none focus:outline-none placeholder-gray-500 transition-colors"
-          disabled={isGenerating}
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-[#1A1A1A] text-gray-400 hover:text-[#4dabf7] transition-colors"
-          disabled={isGenerating || !query.trim()}
-        >
-          <LuSend className="w-5 h-5" />
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
-}; 
+};

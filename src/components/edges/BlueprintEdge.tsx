@@ -1,15 +1,27 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { EdgeProps, getBezierPath, Position } from 'reactflow';
 
-// Define the props interface
-interface BlueprintEdgeProps extends EdgeProps {
-  data?: {
-    label?: string;
-  };
+interface BlueprintEdgeData {
+  label?: string;
+  pinType?: string;
 }
 
-// Define the edge component using standard JSX
-const BlueprintEdge = memo<BlueprintEdgeProps>(({ 
+const PIN_EDGE_COLORS: Record<string, string> = {
+  exec: '#FFFFFF', // Pure white for execution wires
+  bool: '#DC2626', // Unreal Red
+  int: '#16A34A', // Emerald Green
+  float: '#22C55E', // Green
+  byte: '#15803D', // Deep Green
+  string: '#F4F4F5', // White / Silver
+  vector: '#EAB308', // Gold
+  rotator: '#CA8A04', // Gold
+  transform: '#D97706', // Gold / Amber
+  object: '#E4E4E7', // Silver / White
+  class: '#F59E0B', // Gold
+  default: '#A1A1AA', // Slate / Graphite
+};
+
+const BlueprintEdge = memo<EdgeProps<BlueprintEdgeData>>(({ 
   id,
   sourceX,
   sourceY,
@@ -20,10 +32,7 @@ const BlueprintEdge = memo<BlueprintEdgeProps>(({
   style = {},
   markerEnd,
   data,
-  className,
 }) => {
-
-  // Get the bezier path points
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -33,34 +42,20 @@ const BlueprintEdge = memo<BlueprintEdgeProps>(({
     targetPosition,
   });
 
-  // Determine edge type from class name
-  const isExec = className?.includes('exec');
-  const isPinType = className?.split('-')[1];
+  const pinType = data?.pinType || 'default';
+  const strokeColor = PIN_EDGE_COLORS[pinType] || PIN_EDGE_COLORS.default;
 
-  // Use proto colors for edges
-  const pinColorMap: Record<string, string> = {
-    exec: 'var(--tw-color-proto-pin-exec)', 
-    bool: 'var(--tw-color-proto-pin-bool)',
-    int: 'var(--tw-color-proto-pin-int)',
-    float: 'var(--tw-color-proto-pin-float)',
-    string: 'var(--tw-color-proto-pin-string)',
-    vector: 'var(--tw-color-proto-pin-vector)',
-    object: 'var(--tw-color-proto-pin-object)',
-    default: '#aaaaaa', // Fallback
-  };
-
-  // Build edge style
   const edgeStyle = {
     ...style,
-    strokeWidth: 2, // Prototype edge width
-    stroke: pinColorMap[isPinType as keyof typeof pinColorMap] || pinColorMap.default,
+    strokeWidth: pinType === 'exec' ? 2.5 : 2,
+    stroke: strokeColor,
   };
 
   return (
     <>
       <path
         id={id}
-        className={`react-flow__edge-path ${className || ''}`}
+        className="react-flow__edge-path"
         d={edgePath}
         style={edgeStyle}
         markerEnd={markerEnd}
@@ -68,14 +63,13 @@ const BlueprintEdge = memo<BlueprintEdgeProps>(({
       {data?.label && (
         <foreignObject
           width={100}
-          height={40}
-          // Center the label text on the path
+          height={32}
           x={labelX - 50}
-          y={labelY - 20}
+          y={labelY - 16}
           className="react-flow__edge-textwrapper"
           requiredExtensions="http://www.w3.org/1999/xhtml"
         >
-          <div className="react-flow__edge-text bg-proto-node-bg p-1 rounded text-xs text-proto-input-text">
+          <div className="bg-zinc-800/90 text-white text-[10px] px-2 py-0.5 rounded border border-zinc-700 text-center truncate">
             {data.label}
           </div>
         </foreignObject>
@@ -85,5 +79,4 @@ const BlueprintEdge = memo<BlueprintEdgeProps>(({
 });
 
 BlueprintEdge.displayName = 'BlueprintEdge';
-
-export default BlueprintEdge; 
+export default BlueprintEdge;

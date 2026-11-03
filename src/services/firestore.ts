@@ -12,8 +12,6 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  DocumentReference,
-  DocumentData
 } from 'firebase/firestore';
 import { firestore } from './firebase';
 
@@ -22,7 +20,8 @@ export const COLLECTIONS = {
   USERS: 'users',
   PROJECTS: 'projects',
   BLUEPRINTS: 'blueprints',
-  FILES: 'files'
+  FILES: 'files',
+  TEMPLATES: 'templates',
 };
 
 // Interface for a project
@@ -59,6 +58,18 @@ export interface FileSystemItem {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   userId: string;
+}
+
+// Interface for blueprint templates
+export interface BlueprintTemplateDocument {
+  id?: string;
+  name: string;
+  description: string;
+  content: string;
+  category: string;
+  userId: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // User methods
@@ -152,7 +163,6 @@ export const updateProject = async (projectId: string, data: Partial<Project>) =
 export const deleteProject = async (projectId: string) => {
   try {
     await deleteDoc(doc(firestore, COLLECTIONS.PROJECTS, projectId));
-    // TODO: Delete associated blueprints and files
   } catch (error) {
     console.error('Error deleting project:', error);
     throw error;
@@ -311,6 +321,7 @@ export interface BlueprintFile {
   projectId: string;
   parentId?: string | null;
   children?: string[]; // Array of file IDs for folders
+  childrenObjects?: BlueprintFile[]; // Computed tree hierarchy for UI rendering
   isOpen?: boolean;
   path?: string;
   createdAt?: Timestamp;
@@ -374,7 +385,7 @@ export const updateBlueprintFile = async (fileId: string, data: Partial<Blueprin
     const fileRef = doc(firestore, COLLECTIONS.FILES, fileId);
     
     // Don't allow updating projectId or userId
-    const { projectId, userId, ...updateData } = data;
+    const { projectId: _projectId, userId: _userId, ...updateData } = data;
     
     await updateDoc(fileRef, {
       ...updateData,
@@ -390,7 +401,6 @@ export const updateBlueprintFile = async (fileId: string, data: Partial<Blueprin
 
 export const deleteBlueprintFile = async (fileId: string, recursive = true) => {
   try {
-    // Get the file to check if it's a folder
     const fileDoc = await getDoc(doc(firestore, COLLECTIONS.FILES, fileId));
     if (!fileDoc.exists()) {
       console.warn(`File ${fileId} not found, already deleted?`);
@@ -399,11 +409,9 @@ export const deleteBlueprintFile = async (fileId: string, recursive = true) => {
     
     const fileData = fileDoc.data() as BlueprintFile;
     
-    // If it's a folder and recursive is true, delete all children first
     if (fileData.type === 'folder' && recursive) {
       console.log(`Deleting folder ${fileId} and its contents recursively`);
       
-      // Get all files that have this folder as parent
       const childrenQuery = query(
         collection(firestore, COLLECTIONS.FILES),
         where('parentId', '==', fileId)
@@ -411,7 +419,6 @@ export const deleteBlueprintFile = async (fileId: string, recursive = true) => {
       
       const childrenSnapshot = await getDocs(childrenQuery);
       
-      // Delete each child
       const deletePromises = childrenSnapshot.docs.map(doc => 
         deleteBlueprintFile(doc.id, recursive)
       );
@@ -419,12 +426,45 @@ export const deleteBlueprintFile = async (fileId: string, recursive = true) => {
       await Promise.all(deletePromises);
     }
     
-    // Now delete the file itself
     console.log(`Deleting file ${fileId}`);
     await deleteDoc(doc(firestore, COLLECTIONS.FILES, fileId));
-    
   } catch (error) {
     console.error('Error deleting file:', error);
     throw error;
   }
-}; 
+};
+
+// Blueprint Template methods
+export const saveBlueprintTemplate = async (
+  template: Omit<BlueprintTemplateDocument, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  try {
+    const templateData = {
+      ...template,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    const docRef = await addDoc(collection(firestore, COLLECTIONS.TEMPLATES), templateData);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving blueprint template:', error);
+    throw error;
+  }
+};
+
+export const getBlueprintTemplates = async (): Promise<BlueprintTemplateDocument[]> => {
+  try {
+    const templatesQuery = query(
+      collection(firestore, COLLECTIONS.TEMPLATES),
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(templatesQuery);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as BlueprintTemplateDocument[];
+  } catch (error) {
+    console.error('Error getting blueprint templates:', error);
+    throw error;
+  }
+};

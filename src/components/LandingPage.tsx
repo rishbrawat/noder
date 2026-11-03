@@ -3,12 +3,8 @@ import { Link } from 'react-router-dom';
 import { 
   LuBrainCircuit, 
   LuCode, 
-  LuLightbulb, 
-  LuShare2, 
   LuArrowRight,
-  LuZap,
   LuRocket,
-  LuPlay,
   LuSave,
   LuUsers,
   LuActivity,
@@ -743,7 +739,7 @@ interface FeatureCardProps {
   gradient: string;
 }
 
-const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, gradient }) => (
+export const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, gradient }) => (
   <div className="group relative bg-glass rounded-2xl p-8 border border-white/5 transition-all duration-500 hover:border-white/10 hover:shadow-card-hover backdrop-blur-sm overflow-hidden">
     {/* Gradient background that appears on hover */}
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
@@ -769,7 +765,7 @@ interface StepCardProps {
   description: string;
 }
 
-const StepCard: React.FC<StepCardProps> = ({ number, title, description }) => (
+export const StepCard: React.FC<StepCardProps> = ({ number, title, description }) => (
   <div className="group relative p-8 bg-glass rounded-2xl border border-white/5 transition-all duration-300 hover:border-white/10 hover:shadow-card-hover z-10 h-full">
     <div className="absolute -top-8 left-1/2 -translate-x-1/2 md:top-1/2 md:-translate-y-1/2 md:left-auto md:-translate-x-0 md:-left-8 w-16 h-16 rounded-full bg-[#0A0F1C] border border-white/10 flex items-center justify-center text-xl font-bold transform group-hover:scale-110 transition-transform duration-300 shadow-lg z-20">
       <div className="absolute inset-1 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 opacity-10"></div>
@@ -783,3 +779,5 @@ const StepCard: React.FC<StepCardProps> = ({ number, title, description }) => (
 );
 
 export default LandingPage; 
+
+

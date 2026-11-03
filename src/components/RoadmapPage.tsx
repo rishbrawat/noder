@@ -6,15 +6,9 @@ import {
   LuBrainCircuit,
   LuPuzzle,
   LuRocket,
-  LuLightbulb,
   LuCheck,
-  LuArrowRight,
-  LuCode,
-  LuBox,
   LuSparkles,
   LuUsers,
-  LuGlobe,
-  LuGithub,
   LuCalendar,
 } from "react-icons/lu";
 
@@ -264,12 +258,12 @@ const RoadmapPage: React.FC = () => {
           ],
         },
         {
-          text: "Epic MegaGrants Request",
+          text: "Developer Ecosystem Program",
           completed: true,
           date: "April 8, 2025",
           subItems: [
             {
-              text: "Prepared application for Epic MegaGrants",
+              text: "Prepared open developer tool documentation",
               completed: true,
             },
             { text: "Submitted grant request for funding", completed: true },
@@ -467,3 +461,4 @@ const RoadmapPage: React.FC = () => {
 };
 
 export default RoadmapPage;
+
