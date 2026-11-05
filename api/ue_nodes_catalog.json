@@ -1,0 +1,1813 @@
+[
+  {
+    "id": "event-beginplay",
+    "category": "Events",
+    "title": "Event BeginPlay",
+    "subtitle": "Actor Lifecycle",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "event-tick",
+    "category": "Events",
+    "title": "Event Tick",
+    "subtitle": "Frame Update",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Delta Seconds",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "event-anydamage",
+    "category": "Events",
+    "title": "Event AnyDamage",
+    "subtitle": "Damage Pipeline",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Damage",
+        "type": "float"
+      },
+      {
+        "name": "Damage Type",
+        "type": "object"
+      },
+      {
+        "name": "Instigated By",
+        "type": "object"
+      },
+      {
+        "name": "Damage Causer",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "event-endplay",
+    "category": "Events",
+    "title": "Event EndPlay",
+    "subtitle": "Actor Destruction",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "End Play Reason",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "id": "event-overlap-begin",
+    "category": "Events",
+    "title": "OnComponentBeginOverlap",
+    "subtitle": "Collision Trigger",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Other Actor",
+        "type": "object"
+      },
+      {
+        "name": "Other Comp",
+        "type": "object"
+      },
+      {
+        "name": "Other Body Index",
+        "type": "int"
+      },
+      {
+        "name": "bFromSweep",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "event-overlap-end",
+    "category": "Events",
+    "title": "OnComponentEndOverlap",
+    "subtitle": "Collision Exit",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Other Actor",
+        "type": "object"
+      },
+      {
+        "name": "Other Comp",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "event-ia-jump",
+    "category": "Events",
+    "title": "InputAction IA_Jump",
+    "subtitle": "Enhanced Input",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Started",
+        "type": "exec"
+      },
+      {
+        "name": "Ongoing",
+        "type": "exec"
+      },
+      {
+        "name": "Triggered",
+        "type": "exec"
+      },
+      {
+        "name": "Completed",
+        "type": "exec"
+      },
+      {
+        "name": "Canceled",
+        "type": "exec"
+      },
+      {
+        "name": "Action Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "event-ia-sprint",
+    "category": "Events",
+    "title": "InputAction IA_Sprint",
+    "subtitle": "Enhanced Input",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Started",
+        "type": "exec"
+      },
+      {
+        "name": "Triggered",
+        "type": "exec"
+      },
+      {
+        "name": "Completed",
+        "type": "exec"
+      },
+      {
+        "name": "Action Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "event-ia-interact",
+    "category": "Events",
+    "title": "InputAction IA_Interact",
+    "subtitle": "Enhanced Input",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Started",
+        "type": "exec"
+      },
+      {
+        "name": "Triggered",
+        "type": "exec"
+      },
+      {
+        "name": "Completed",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "event-ia-fire",
+    "category": "Events",
+    "title": "InputAction IA_Fire",
+    "subtitle": "Enhanced Input",
+    "nodeType": "event",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "Started",
+        "type": "exec"
+      },
+      {
+        "name": "Triggered",
+        "type": "exec"
+      },
+      {
+        "name": "Completed",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-branch",
+    "category": "Flow",
+    "title": "Branch",
+    "subtitle": "If / Else (B+Click)",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Condition",
+        "type": "bool",
+        "value": "true"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "True",
+        "type": "exec"
+      },
+      {
+        "name": "False",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-sequence",
+    "category": "Flow",
+    "title": "Sequence",
+    "subtitle": "Multi-Step Execution (S+Click)",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then 0",
+        "type": "exec"
+      },
+      {
+        "name": "Then 1",
+        "type": "exec"
+      },
+      {
+        "name": "Then 2",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-reroute",
+    "category": "Flow",
+    "title": "Reroute",
+    "subtitle": "Knot Pin (Double-Click Wire)",
+    "nodeType": "reroute",
+    "inputs": [
+      {
+        "name": "In",
+        "type": "exec"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Out",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-delay",
+    "category": "Flow",
+    "title": "Delay",
+    "subtitle": "Latent Wait (D+Click)",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Duration",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Completed",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-retriggerable-delay",
+    "category": "Flow",
+    "title": "Retriggerable Delay",
+    "subtitle": "Resettable Latent Wait",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Duration",
+        "type": "float",
+        "value": "2.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Completed",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-do-once",
+    "category": "Flow",
+    "title": "DoOnce",
+    "subtitle": "Latent Gate Guard",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Reset",
+        "type": "exec"
+      },
+      {
+        "name": "Start Closed",
+        "type": "bool",
+        "value": "false"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Completed",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-do-n",
+    "category": "Flow",
+    "title": "Do N",
+    "subtitle": "Execution Counter",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Enter",
+        "type": "exec"
+      },
+      {
+        "name": "N",
+        "type": "int",
+        "value": "3"
+      },
+      {
+        "name": "Reset",
+        "type": "exec"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Exit",
+        "type": "exec"
+      },
+      {
+        "name": "Counter",
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "id": "flow-flipflop",
+    "category": "Flow",
+    "title": "Flip Flop",
+    "subtitle": "Alternating Toggle",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "A",
+        "type": "exec"
+      },
+      {
+        "name": "B",
+        "type": "exec"
+      },
+      {
+        "name": "Is A",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "flow-gate",
+    "category": "Flow",
+    "title": "Gate",
+    "subtitle": "Conditional Flow Gate",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Enter",
+        "type": "exec"
+      },
+      {
+        "name": "Open",
+        "type": "exec"
+      },
+      {
+        "name": "Close",
+        "type": "exec"
+      },
+      {
+        "name": "Toggle",
+        "type": "exec"
+      },
+      {
+        "name": "Start Closed",
+        "type": "bool",
+        "value": "false"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Exit",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "flow-foreach",
+    "category": "Flow",
+    "title": "For Each Loop",
+    "subtitle": "Array Iteration",
+    "nodeType": "macro",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Array",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Loop Body",
+        "type": "exec"
+      },
+      {
+        "name": "Array Element",
+        "type": "object"
+      },
+      {
+        "name": "Array Index",
+        "type": "int"
+      },
+      {
+        "name": "Completed",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-set-walkspeed",
+    "category": "Locomotion",
+    "title": "Set Max Walk Speed",
+    "subtitle": "Character Movement",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Target",
+        "type": "object"
+      },
+      {
+        "name": "Max Walk Speed",
+        "type": "float",
+        "value": "800.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-get-walkspeed",
+    "category": "Locomotion",
+    "title": "Get Max Walk Speed",
+    "subtitle": "Character Movement",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "loco-jump",
+    "category": "Locomotion",
+    "title": "Jump",
+    "subtitle": "Character Action",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-stop-jumping",
+    "category": "Locomotion",
+    "title": "Stop Jumping",
+    "subtitle": "Character Action",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-launch-character",
+    "category": "Locomotion",
+    "title": "Launch Character",
+    "subtitle": "Velocity Impulses",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Launch Velocity",
+        "type": "vector"
+      },
+      {
+        "name": "bXYOverride",
+        "type": "bool",
+        "value": "false"
+      },
+      {
+        "name": "bZOverride",
+        "type": "bool",
+        "value": "true"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-add-movement-input",
+    "category": "Locomotion",
+    "title": "Add Movement Input",
+    "subtitle": "Pawn Locomotion",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "World Direction",
+        "type": "vector"
+      },
+      {
+        "name": "Scale Value",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-add-yaw",
+    "category": "Locomotion",
+    "title": "Add Controller Yaw Input",
+    "subtitle": "Camera / Look Input",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Val",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-add-pitch",
+    "category": "Locomotion",
+    "title": "Add Controller Pitch Input",
+    "subtitle": "Camera / Look Input",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Val",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "loco-is-falling",
+    "category": "Locomotion",
+    "title": "Is Falling",
+    "subtitle": "Airborne State Check",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "world-get-location",
+    "category": "World",
+    "title": "Get Actor Location",
+    "subtitle": "Transform Query",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "world-set-location",
+    "category": "World",
+    "title": "Set Actor Location",
+    "subtitle": "Transform Update",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "New Location",
+        "type": "vector"
+      },
+      {
+        "name": "bSweep",
+        "type": "bool",
+        "value": "false"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Sweep Hit Result",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "world-get-rotation",
+    "category": "World",
+    "title": "Get Actor Rotation",
+    "subtitle": "Transform Query",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "rotator"
+      }
+    ]
+  },
+  {
+    "id": "world-set-rotation",
+    "category": "World",
+    "title": "Set Actor Rotation",
+    "subtitle": "Transform Update",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "New Rotation",
+        "type": "rotator"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "world-get-forward",
+    "category": "World",
+    "title": "Get Actor Forward Vector",
+    "subtitle": "Direction Vector",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "world-spawn-actor",
+    "category": "World",
+    "title": "SpawnActor from Class",
+    "subtitle": "Dynamic Spawning",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Class",
+        "type": "class"
+      },
+      {
+        "name": "Spawn Transform",
+        "type": "transform"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Return Value",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "world-destroy-actor",
+    "category": "World",
+    "title": "Destroy Actor",
+    "subtitle": "Actor Cleanup",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Target",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "world-set-hidden",
+    "category": "World",
+    "title": "Set Actor Hidden In Game",
+    "subtitle": "Visibility State",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "New Hidden",
+        "type": "bool",
+        "value": "true"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "phys-linetrace",
+    "category": "Physics",
+    "title": "Line Trace By Channel",
+    "subtitle": "Raycast Query",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Start",
+        "type": "vector"
+      },
+      {
+        "name": "End",
+        "type": "vector"
+      },
+      {
+        "name": "Trace Channel",
+        "type": "string",
+        "value": "Visibility"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Out Hit",
+        "type": "object"
+      },
+      {
+        "name": "Return Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "phys-spheretrace",
+    "category": "Physics",
+    "title": "Sphere Trace By Channel",
+    "subtitle": "Volumetric Sweep",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Start",
+        "type": "vector"
+      },
+      {
+        "name": "End",
+        "type": "vector"
+      },
+      {
+        "name": "Radius",
+        "type": "float",
+        "value": "32.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Out Hit",
+        "type": "object"
+      },
+      {
+        "name": "Return Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "phys-apply-damage",
+    "category": "Physics",
+    "title": "Apply Damage",
+    "subtitle": "Gameplay Damage",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Damaged Actor",
+        "type": "object"
+      },
+      {
+        "name": "Base Damage",
+        "type": "float",
+        "value": "25.0"
+      },
+      {
+        "name": "Event Instigator",
+        "type": "object"
+      },
+      {
+        "name": "Damage Causer",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Return Value",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "phys-add-impulse",
+    "category": "Physics",
+    "title": "Add Impulse",
+    "subtitle": "Rigid Body Physics",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Impulse",
+        "type": "vector"
+      },
+      {
+        "name": "bVelChange",
+        "type": "bool",
+        "value": "true"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "phys-break-hit-result",
+    "category": "Physics",
+    "title": "Break Hit Result",
+    "subtitle": "FHitResult Struct Decomposition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Hit Result",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Blocking Hit",
+        "type": "bool"
+      },
+      {
+        "name": "Initial Overlap",
+        "type": "bool"
+      },
+      {
+        "name": "Time",
+        "type": "float"
+      },
+      {
+        "name": "Distance",
+        "type": "float"
+      },
+      {
+        "name": "Location",
+        "type": "vector"
+      },
+      {
+        "name": "Impact Point",
+        "type": "vector"
+      },
+      {
+        "name": "Normal",
+        "type": "vector"
+      },
+      {
+        "name": "Impact Normal",
+        "type": "vector"
+      },
+      {
+        "name": "Phys Material",
+        "type": "object"
+      },
+      {
+        "name": "Hit Actor",
+        "type": "object"
+      },
+      {
+        "name": "Hit Component",
+        "type": "object"
+      },
+      {
+        "name": "Hit Bone Name",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "id": "math-make-vector",
+    "category": "Math",
+    "title": "Make Vector",
+    "subtitle": "FVector Struct Composition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "X",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "Y",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "Z",
+        "type": "float",
+        "value": "0.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "math-break-vector",
+    "category": "Math",
+    "title": "Break Vector",
+    "subtitle": "FVector Struct Decomposition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "In Vec",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "X",
+        "type": "float"
+      },
+      {
+        "name": "Y",
+        "type": "float"
+      },
+      {
+        "name": "Z",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "math-make-rotator",
+    "category": "Math",
+    "title": "Make Rotator",
+    "subtitle": "FRotator Struct Composition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Roll",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "Pitch",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "Yaw",
+        "type": "float",
+        "value": "0.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "rotator"
+      }
+    ]
+  },
+  {
+    "id": "math-break-rotator",
+    "category": "Math",
+    "title": "Break Rotator",
+    "subtitle": "FRotator Struct Decomposition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "In Rot",
+        "type": "rotator"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Roll",
+        "type": "float"
+      },
+      {
+        "name": "Pitch",
+        "type": "float"
+      },
+      {
+        "name": "Yaw",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "math-make-transform",
+    "category": "Math",
+    "title": "Make Transform",
+    "subtitle": "FTransform Struct Composition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Location",
+        "type": "vector"
+      },
+      {
+        "name": "Rotation",
+        "type": "rotator"
+      },
+      {
+        "name": "Scale",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "transform"
+      }
+    ]
+  },
+  {
+    "id": "math-break-transform",
+    "category": "Math",
+    "title": "Break Transform",
+    "subtitle": "FTransform Struct Decomposition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "In Transform",
+        "type": "transform"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Location",
+        "type": "vector"
+      },
+      {
+        "name": "Rotation",
+        "type": "rotator"
+      },
+      {
+        "name": "Scale",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "math-vec-add",
+    "category": "Math",
+    "title": "Vector + Vector",
+    "subtitle": "Vector Addition",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "vector"
+      },
+      {
+        "name": "B",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "math-vec-sub",
+    "category": "Math",
+    "title": "Vector - Vector",
+    "subtitle": "Vector Subtraction",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "vector"
+      },
+      {
+        "name": "B",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "math-vec-scale",
+    "category": "Math",
+    "title": "Vector * Float",
+    "subtitle": "Vector Scaling",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "vector"
+      },
+      {
+        "name": "B",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "vector"
+      }
+    ]
+  },
+  {
+    "id": "math-vec-length",
+    "category": "Math",
+    "title": "Vector Length",
+    "subtitle": "Magnitude",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "math-vec-distance",
+    "category": "Math",
+    "title": "Distance (Vector)",
+    "subtitle": "Euclidean Distance",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "V1",
+        "type": "vector"
+      },
+      {
+        "name": "V2",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "math-clamp",
+    "category": "Math",
+    "title": "Clamp (Float)",
+    "subtitle": "Range Limit",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Value",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "Min",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "Max",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "math-lerp",
+    "category": "Math",
+    "title": "Lerp (Float)",
+    "subtitle": "Linear Interpolation",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "B",
+        "type": "float",
+        "value": "1.0"
+      },
+      {
+        "name": "Alpha",
+        "type": "float",
+        "value": "0.5"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "float"
+      }
+    ]
+  },
+  {
+    "id": "math-greater",
+    "category": "Math",
+    "title": "Compare Float (>)",
+    "subtitle": "Greater Than Check",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "float",
+        "value": "1.0"
+      },
+      {
+        "name": "B",
+        "type": "float",
+        "value": "0.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "math-equal",
+    "category": "Math",
+    "title": "Compare Equal (==)",
+    "subtitle": "Equality Check",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "float",
+        "value": "0.0"
+      },
+      {
+        "name": "B",
+        "type": "float",
+        "value": "0.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "math-and",
+    "category": "Math",
+    "title": "Boolean AND",
+    "subtitle": "Logical Conjunction",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "A",
+        "type": "bool",
+        "value": "true"
+      },
+      {
+        "name": "B",
+        "type": "bool",
+        "value": "true"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "id": "audio-playsound2d",
+    "category": "Audio/VFX",
+    "title": "Play Sound 2D",
+    "subtitle": "UI / Global Audio",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Sound",
+        "type": "object"
+      },
+      {
+        "name": "Volume Multiplier",
+        "type": "float",
+        "value": "1.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "audio-playsound-location",
+    "category": "Audio/VFX",
+    "title": "Play Sound at Location",
+    "subtitle": "Spatial Audio",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Sound",
+        "type": "object"
+      },
+      {
+        "name": "Location",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "vfx-spawn-emitter",
+    "category": "Audio/VFX",
+    "title": "Spawn Emitter at Location",
+    "subtitle": "Cascade Particle VFX",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Emitter Template",
+        "type": "object"
+      },
+      {
+        "name": "Location",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Return Value",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "vfx-spawn-niagara",
+    "category": "Audio/VFX",
+    "title": "Spawn System at Location",
+    "subtitle": "Niagara Particle VFX",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "System Template",
+        "type": "object"
+      },
+      {
+        "name": "Location",
+        "type": "vector"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Return Value",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "ui-print-string",
+    "category": "UI",
+    "title": "Print String",
+    "subtitle": "Debug Logging (P+Click)",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "In String",
+        "type": "string",
+        "value": "Hello from Unreal"
+      },
+      {
+        "name": "Text Color",
+        "type": "string",
+        "value": "(R=0,G=0.6,B=1,A=1)"
+      },
+      {
+        "name": "Duration",
+        "type": "float",
+        "value": "2.0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "ui-get-player-controller",
+    "category": "UI",
+    "title": "Get Player Controller",
+    "subtitle": "Controller Query",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Player Index",
+        "type": "int",
+        "value": "0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Return Value",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "ui-create-widget",
+    "category": "UI",
+    "title": "Create Widget",
+    "subtitle": "UMG UI Creation",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Class",
+        "type": "class"
+      },
+      {
+        "name": "Owning Player",
+        "type": "object"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      },
+      {
+        "name": "Return Value",
+        "type": "object"
+      }
+    ]
+  },
+  {
+    "id": "ui-add-to-viewport",
+    "category": "UI",
+    "title": "Add to Viewport",
+    "subtitle": "UMG Display",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Target",
+        "type": "object"
+      },
+      {
+        "name": "Z-Order",
+        "type": "int",
+        "value": "0"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  },
+  {
+    "id": "ui-show-cursor",
+    "category": "UI",
+    "title": "Set Show Mouse Cursor",
+    "subtitle": "Player Input State",
+    "nodeType": "function",
+    "inputs": [
+      {
+        "name": "Execute",
+        "type": "exec"
+      },
+      {
+        "name": "Target",
+        "type": "object"
+      },
+      {
+        "name": "bShowMouseCursor",
+        "type": "bool",
+        "value": "true"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "Then",
+        "type": "exec"
+      }
+    ]
+  }
+]

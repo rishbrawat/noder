@@ -7,7 +7,13 @@ export default defineConfig({
     react() // Let the react plugin handle JSX transformation automatically
   ],
   server: {
-    open: true
+    open: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
   },
   // Define environment variables that will be available in the frontend
   define: {

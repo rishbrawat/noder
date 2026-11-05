@@ -99,6 +99,7 @@ export const MyBlueprintDrawer: React.FC<MyBlueprintDrawerProps> = ({ isOpen, on
 
   // Spawn a "Get <Variable>" Pure Node
   const handleSpawnGetter = (variable: BlueprintVariable) => {
+    useBlueprintStore.getState().pushHistory('Spawn Variable Getter');
     const spawnX = Math.round(Math.random() * 150 + 250);
     const spawnY = Math.round(Math.random() * 150 + 200);
 
@@ -123,6 +124,7 @@ export const MyBlueprintDrawer: React.FC<MyBlueprintDrawerProps> = ({ isOpen, on
 
   // Spawn a "Set <Variable>" Function Node
   const handleSpawnSetter = (variable: BlueprintVariable) => {
+    useBlueprintStore.getState().pushHistory('Spawn Variable Setter');
     const spawnX = Math.round(Math.random() * 150 + 350);
     const spawnY = Math.round(Math.random() * 150 + 200);
 

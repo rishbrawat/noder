@@ -104,8 +104,31 @@
 
 .react-flow__node {
   cursor: grab;
+  contain: layout style paint;
+  will-change: transform;
 }
 
 .react-flow__node.dragging {
   cursor: grabbing !important;
 }
+
+/* 120fps GPU Hardware Acceleration & Layer Promotion */
+.react-flow__viewport {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.react-flow__renderer {
+  transform: translateZ(0);
+}
+
+.react-flow__edge {
+  contain: layout style;
+}
+
+/* Zero-Latency Instant Wire Drag Tracking (Prevent SVG 'd' path interpolation lag) */
+.react-flow__edge-path {
+  transition: stroke 0.15s ease, stroke-width 0.15s ease !important;
+  vector-effect: non-scaling-stroke;
+}
+

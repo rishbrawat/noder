@@ -109,5 +109,93 @@ End Object`;
     expect(parsed.nodes[0].position.x).toBe(200);
     expect(parsed.nodes[0].position.y).toBe(300);
   });
+
+  it('parses K2Node_BreakStruct and K2Node_MakeStruct into struct decomposition nodes', () => {
+    const rawT3D = `
+Begin Object Class=/Script/BlueprintGraph.K2Node_BreakStruct Name="K2Node_BreakStruct_0"
+   StructType=ScriptStruct'"/Script/Engine.HitResult"'
+   NodePosX=100
+   NodePosY=100
+   NodeGuid=A1B2C3D4E5F678901234567890ABCDE1
+   CustomProperties Pin (PinId=B1B2C3D4E5F678901234567890ABCDE2,PinName="HitResult",PinType.PinCategory="struct",Direction="EGPD_Input")
+   CustomProperties Pin (PinId=C1B2C3D4E5F678901234567890ABCDE3,PinName="Location",PinType.PinCategory="struct",Direction="EGPD_Output")
+End Object
+Begin Object Class=/Script/BlueprintGraph.K2Node_MakeStruct Name="K2Node_MakeStruct_0"
+   StructType=ScriptStruct'"/Script/Engine.Vector"'
+   NodePosX=400
+   NodePosY=100
+   NodeGuid=D1B2C3D4E5F678901234567890ABCDE4
+   CustomProperties Pin (PinId=E1B2C3D4E5F678901234567890ABCDE5,PinName="X",PinType.PinCategory="real",Direction="EGPD_Input")
+   CustomProperties Pin (PinId=F1B2C3D4E5F678901234567890ABCDE6,PinName="Return Value",PinType.PinCategory="struct",Direction="EGPD_Output")
+End Object
+    `.trim();
+
+    const parsed = parseUE5T3DToGraph(rawT3D);
+    expect(parsed.nodes.length).toBe(2);
+    expect(parsed.nodes[0].data.title).toBe('Break Hit Result');
+    expect(parsed.nodes[1].data.title).toBe('Make Vector');
+  });
+
+  it('parses T3D graphs with hyphenated standard UUIDs without truncating PinId or dropping edges', () => {
+    const t3d = `
+  Begin Object Class=/Script/BlueprintGraph.K2Node_CallFunction Name="Node_A"
+     CustomProperties Pin (PinId=A1B2C3D4-E5F6-7890-ABCD-EF1234567890,PinName="OutA",PinType.PinCategory="int",Direction="EGPD_Output",LinkedTo=(Node_B B2C3D4E5-F678-90AB-CDEF-1234567890AB))
+  End Object
+  Begin Object Class=/Script/BlueprintGraph.K2Node_CallFunction Name="Node_B"
+     CustomProperties Pin (PinId=B2C3D4E5-F678-90AB-CDEF-1234567890AB,PinName="InB",PinType.PinCategory="int",Direction="EGPD_Input",LinkedTo=(Node_A A1B2C3D4-E5F6-7890-ABCD-EF1234567890))
+  End Object
+    `.trim();
+
+    const result = parseUE5T3DToGraph(t3d);
+    expect(result.nodes.length).toBe(2);
+    expect(result.edges.length).toBe(1);
+    expect(result.edges[0].sourceHandle).toBe('int-outa');
+    expect(result.edges[0].targetHandle).toBe('int-inb');
+  });
+
+  it('losslessly roundtrips multi-word pins between compileGraphToT3D and parseUE5T3DToGraph', () => {
+    const originalNodes: Node<NodeData>[] = [
+      {
+        id: 'n1',
+        type: 'customNode',
+        position: { x: 0, y: 0 },
+        data: {
+          title: 'Make Vector',
+          nodeType: 'function',
+          inputs: [],
+          outputs: [{ name: 'Return Value', type: 'vector' }],
+        },
+      },
+      {
+        id: 'n2',
+        type: 'customNode',
+        position: { x: 300, y: 0 },
+        data: {
+          title: 'Set Actor Location',
+          nodeType: 'function',
+          inputs: [{ name: 'New Location', type: 'vector' }],
+          outputs: [],
+        },
+      },
+    ];
+
+    const originalEdges: Edge[] = [
+      {
+        id: 'e1',
+        source: 'n1',
+        target: 'n2',
+        sourceHandle: 'vector-return-value',
+        targetHandle: 'vector-new-location',
+      },
+    ];
+
+    const compiled = compileGraphToT3D(originalNodes, originalEdges);
+    expect(compiled.warnings).toHaveLength(0);
+    expect(compiled.t3dText).toContain('LinkedTo=');
+
+    const parsed = parseUE5T3DToGraph(compiled.t3dText);
+    expect(parsed.nodes).toHaveLength(2);
+    expect(parsed.edges).toHaveLength(1);
+  });
 });
 

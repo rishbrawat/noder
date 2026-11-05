@@ -134,5 +134,102 @@ describe('Unreal Engine 5 T3D Compiler', () => {
     expect(result.t3dText).toContain('NodePosX=50');
     expect(result.t3dText).toContain('NodePosY=50');
   });
+
+  it('should compile reroute knot to K2Node_Knot in T3D format', () => {
+    const nodes: Node<NodeData>[] = [
+      {
+        id: 'knot-1',
+        type: 'customNode',
+        position: { x: 300, y: 150 },
+        data: {
+          title: 'Reroute',
+          nodeType: 'reroute',
+          inputs: [{ name: 'In', type: 'exec' }],
+          outputs: [{ name: 'Out', type: 'exec' }],
+        },
+      },
+    ];
+
+    const result = compileGraphToT3D(nodes, []);
+    expect(result.t3dText).toContain('Begin Object Class=/Script/BlueprintGraph.K2Node_Knot');
+    expect(result.t3dText).toContain('NodePosX=300');
+    expect(result.t3dText).toContain('NodePosY=150');
+  });
+
+  it('should compile Break Hit Result and Make Vector to K2Node_BreakStruct and K2Node_MakeStruct', () => {
+    const nodes: Node<NodeData>[] = [
+      {
+        id: 'break-hit-1',
+        type: 'customNode',
+        position: { x: 200, y: 100 },
+        data: {
+          title: 'Break Hit Result',
+          nodeType: 'function',
+          inputs: [{ name: 'Hit Result', type: 'object' }],
+          outputs: [{ name: 'Location', type: 'vector' }, { name: 'Blocking Hit', type: 'bool' }],
+        },
+      },
+      {
+        id: 'make-vec-1',
+        type: 'customNode',
+        position: { x: 500, y: 100 },
+        data: {
+          title: 'Make Vector',
+          nodeType: 'function',
+          inputs: [{ name: 'X', type: 'float' }, { name: 'Y', type: 'float' }, { name: 'Z', type: 'float' }],
+          outputs: [{ name: 'Return Value', type: 'vector' }],
+        },
+      },
+    ];
+
+    const result = compileGraphToT3D(nodes, []);
+    expect(result.t3dText).toContain('Begin Object Class=/Script/BlueprintGraph.K2Node_BreakStruct');
+    expect(result.t3dText).toContain('StructType=ScriptStruct\'"/Script/Engine.HitResult"\'');
+    expect(result.t3dText).toContain('Begin Object Class=/Script/BlueprintGraph.K2Node_MakeStruct');
+    expect(result.t3dText).toContain('StructType=ScriptStruct\'"/Script/Engine.Vector"\'');
+  });
+
+  it('should properly link nodes with multi-word pin names without dropping connections', () => {
+    const nodes: Node<NodeData>[] = [
+      {
+        id: 'node-make',
+        type: 'customNode',
+        position: { x: 100, y: 100 },
+        data: {
+          title: 'Make Vector',
+          nodeType: 'function',
+          inputs: [],
+          outputs: [{ name: 'Return Value', type: 'vector' }],
+        },
+      },
+      {
+        id: 'node-break',
+        type: 'customNode',
+        position: { x: 500, y: 100 },
+        data: {
+          title: 'Break Hit Result',
+          nodeType: 'function',
+          inputs: [{ name: 'Hit Result', type: 'object' }],
+          outputs: [],
+        },
+      },
+    ];
+
+    const edges: Edge[] = [
+      {
+        id: 'edge-multi',
+        source: 'node-make',
+        target: 'node-break',
+        sourceHandle: 'vector-return-value',
+        targetHandle: 'object-hit-result',
+      },
+    ];
+
+    const result = compileGraphToT3D(nodes, edges);
+    expect(result.warnings).toHaveLength(0);
+    expect(result.t3dText).toContain('LinkedTo=');
+    expect(result.t3dText).toContain('PinName="Return Value"');
+    expect(result.t3dText).toContain('PinName="Hit Result"');
+  });
 });
 

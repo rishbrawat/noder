@@ -101,3 +101,156 @@ export function calculateBlueprintLayout(
   return positions;
 }
 
+import { Node, Edge } from 'reactflow';
+import { NodeData } from '../types/BlueprintTypes';
+
+/**
+ * Epic Games Style Linear Graph Auto-Formatter:
+ * Re-arranges active Blueprint canvas nodes into clean horizontal execution spines,
+ * with pure mathematical/getter nodes neatly stacked beneath the input pins of their consumers.
+ */
+export function formatGraphLayout(
+  nodes: Node<NodeData>[],
+  edges: Edge[]
+): Node<NodeData>[] {
+  if (nodes.length <= 1) return nodes;
+
+  const logicNodes = nodes.filter(n => n.type !== 'commentNode');
+  if (logicNodes.length === 0) return nodes;
+
+  const inDegree = new Map<string, number>();
+  const execAdjacency = new Map<string, string[]>();
+  const dataConsumers = new Map<string, string[]>();
+
+  logicNodes.forEach(n => {
+    inDegree.set(n.id, 0);
+    execAdjacency.set(n.id, []);
+    dataConsumers.set(n.id, []);
+  });
+
+  edges.forEach(e => {
+    const isExec = (e.data as any)?.pinType === 'exec' || (e.sourceHandle || '').startsWith('exec-');
+    if (isExec) {
+      if (execAdjacency.has(e.source)) {
+        execAdjacency.get(e.source)!.push(e.target);
+        inDegree.set(e.target, (inDegree.get(e.target) || 0) + 1);
+      }
+    } else {
+      if (dataConsumers.has(e.source)) {
+        dataConsumers.get(e.source)!.push(e.target);
+      }
+    }
+  });
+
+  const isPureNode = (node: Node<NodeData>) => {
+    const hasExecIn = (node.data?.inputs || []).some(p => p.type === 'exec');
+    const hasExecOut = (node.data?.outputs || []).some(p => p.type === 'exec');
+    return !hasExecIn && !hasExecOut && node.data?.nodeType !== 'event' && node.data?.nodeType !== 'reroute';
+  };
+
+  const pureNodeIds = new Set(logicNodes.filter(isPureNode).map(n => n.id));
+  const execNodes = logicNodes.filter(n => !pureNodeIds.has(n.id));
+
+  const nodeLayer = new Map<string, number>();
+  const roots = execNodes.filter(n => 
+    (inDegree.get(n.id) === 0) || 
+    n.data?.nodeType === 'event' || 
+    /^(event|inputaction)/i.test(n.data?.title || '')
+  );
+
+  const startRoots = roots.length > 0 ? roots : [execNodes[0] || logicNodes[0]];
+  const queue: { id: string; col: number }[] = [];
+  const visited = new Set<string>();
+
+  startRoots.forEach(r => {
+    queue.push({ id: r.id, col: 0 });
+    visited.add(r.id);
+    nodeLayer.set(r.id, 0);
+  });
+
+  while (queue.length > 0) {
+    const { id, col } = queue.shift()!;
+    const targets = execAdjacency.get(id) || [];
+    targets.forEach(targetId => {
+      const nextCol = col + 1;
+      const cur = nodeLayer.get(targetId) ?? 0;
+      nodeLayer.set(targetId, Math.max(cur, nextCol));
+      if (!visited.has(targetId)) {
+        visited.add(targetId);
+        queue.push({ id: targetId, col: nextCol });
+      }
+    });
+  }
+
+  execNodes.forEach(n => {
+    if (!nodeLayer.has(n.id)) {
+      nodeLayer.set(n.id, 0);
+    }
+  });
+
+  const layerGroups = new Map<number, string[]>();
+  nodeLayer.forEach((layer, id) => {
+    if (!layerGroups.has(layer)) layerGroups.set(layer, []);
+    layerGroups.get(layer)!.push(id);
+  });
+
+  const HORIZONTAL_STEP = 340;
+  const VERTICAL_STEP = 180;
+  const START_X = 100;
+  const START_Y = 160;
+
+  const positions = new Map<string, { x: number; y: number }>();
+
+  layerGroups.forEach((ids, layer) => {
+    ids.forEach((id, row) => {
+      positions.set(id, {
+        x: START_X + layer * HORIZONTAL_STEP,
+        y: START_Y + row * VERTICAL_STEP,
+      });
+    });
+  });
+
+  const purePlaced = new Set<string>();
+  const consumerPureCount = new Map<string, number>();
+
+  pureNodeIds.forEach(pureId => {
+    const consumers = dataConsumers.get(pureId) || [];
+    const consumerId = consumers.find(c => positions.has(c));
+
+    if (consumerId && positions.has(consumerId)) {
+      const consumerPos = positions.get(consumerId)!;
+      const count = consumerPureCount.get(consumerId) || 0;
+      consumerPureCount.set(consumerId, count + 1);
+
+      positions.set(pureId, {
+        x: consumerPos.x - 260,
+        y: consumerPos.y + 40 + count * 110,
+      });
+      purePlaced.add(pureId);
+    }
+  });
+
+  const maxY = Math.max(START_Y, ...Array.from(positions.values()).map(p => p.y));
+  let orphanIndex = 0;
+  pureNodeIds.forEach(pureId => {
+    if (!purePlaced.has(pureId)) {
+      positions.set(pureId, {
+        x: START_X + (orphanIndex % 4) * 260,
+        y: maxY + 200 + Math.floor(orphanIndex / 4) * 120,
+      });
+      orphanIndex++;
+    }
+  });
+
+  return nodes.map(node => {
+    const newPos = positions.get(node.id);
+    if (newPos) {
+      return {
+        ...node,
+        position: { x: Math.round(newPos.x), y: Math.round(newPos.y) },
+      };
+    }
+    return node;
+  });
+}
+

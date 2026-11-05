@@ -1,5 +1,7 @@
 import { Node, Edge } from 'reactflow';
 
+export type PinContainerType = 'none' | 'array' | 'set' | 'map' | 'TArray' | 'TSet' | 'TMap';
+
 export type PinType = 
   | 'exec' 
   | 'bool' 
@@ -17,13 +19,32 @@ export type PinType =
   | 'name' 
   | 'byte' 
   | 'wildcard' 
-  | 'materialattributes';
+  | 'materialattributes'
+  | 'array'
+  | 'set'
+  | 'map'
+  | 'TArray'
+  | 'TSet'
+  | 'TMap';
+
+export function normalizeContainerType(
+  container?: PinContainerType,
+  type?: PinType
+): 'none' | 'array' | 'set' | 'map' {
+  if (container === 'array' || container === 'TArray' || type === 'array' || type === 'TArray') return 'array';
+  if (container === 'set' || container === 'TSet' || type === 'set' || type === 'TSet') return 'set';
+  if (container === 'map' || container === 'TMap' || type === 'map' || type === 'TMap') return 'map';
+  return 'none';
+}
 
 export type NodeType = 'event' | 'function' | 'variable' | 'macro' | 'customNode' | 'reroute';
 
 export interface PinData {
   name: string;
   type: PinType;
+  containerType?: PinContainerType;
+  innerType?: PinType;
+  valueType?: PinType;
   description?: string;
   value?: any;
 }
@@ -63,8 +84,8 @@ export interface LLMNodeData {
   color?: string;
   description?: string;
   position?: { x: number; y: number };
-  inputs: { name: string; type: PinType; value?: any }[];
-  outputs: { name: string; type: PinType }[];
+  inputs: { name: string; type: PinType; containerType?: PinContainerType; innerType?: PinType; valueType?: PinType; value?: any }[];
+  outputs: { name: string; type: PinType; containerType?: PinContainerType; innerType?: PinType; valueType?: PinType }[];
 }
 
 export interface LLMConnectionData {
@@ -79,6 +100,7 @@ export interface LLMBlueprintData {
   blueprintDescription?: string;
   nodes: LLMNodeData[];
   connections: LLMConnectionData[];
+  _meta?: Record<string, any>;
 }
 
 export interface BlueprintGeneration {
@@ -116,6 +138,9 @@ export interface BlueprintVariable {
   id: string;
   name: string;
   type: PinType;
+  containerType?: PinContainerType;
+  innerType?: PinType;
+  valueType?: PinType;
   defaultValue?: any;
   category: string;
   isReplicated: boolean;

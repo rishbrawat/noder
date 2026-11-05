@@ -37,27 +37,46 @@ export function generateUE5PythonScript(
   edges: Edge[],
   options: PythonGeneratorOptions = {}
 ): PythonScriptResult {
-  const blueprintName = (options.blueprintName || 'BP_GameplayAsset').replace(/\s+/g, '_');
-  const targetClass = options.targetClass || 'Actor';
-  const packagePath = options.packagePath || '/Game/Blueprints';
+  // Sanitize blueprintName to authentic Unreal Engine asset naming rules (alphanumeric and underscores)
+  const rawBlueprintName = options.blueprintName || 'BP_GameplayAsset';
+  const sanitizedBlueprintName = rawBlueprintName
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_]/g, '');
+  const blueprintName = sanitizedBlueprintName || 'BP_GameplayAsset';
+
+  // Sanitize targetClass and packagePath against quote injection and illegal characters
+  const rawTargetClass = options.targetClass || 'Actor';
+  const targetClass = rawTargetClass.trim().replace(/[^a-zA-Z0-9_]/g, '') || 'Actor';
+
+  const rawPackagePath = options.packagePath || '/Game/Blueprints';
+  const packagePath = rawPackagePath.trim().replace(/[^a-zA-Z0-9_/]/g, '') || '/Game/Blueprints';
+
   const parentClassPath = CLASS_LOOKUP[targetClass] || `/Script/Engine.${targetClass}`;
 
-  const safeIdentifier = blueprintName.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+  const safeIdentifier = blueprintName.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() || 'gameplay_asset';
   const fileName = `${blueprintName}_Generator.py`;
 
   // Compile graph to standard T3D format
   const { t3dText, nodeCount, connectionCount } = compileGraphToT3D(nodes, edges);
 
-  // Format node summary for log printing
+  // Format node summary for log printing (indented with 4 spaces to match function body)
   const nodeSummaryLines = nodes.length > 0
     ? nodes
         .slice(0, 10)
         .map(
-          n =>
-            `        unreal.log("  * [Node: ${n.data?.title?.replace(/"/g, '\\"')} | Type: ${n.data?.nodeType}]")`
+          n => {
+            const safeTitle = (n.data?.title || 'Unknown')
+              .replace(/\\/g, '\\\\')
+              .replace(/"/g, '\\"');
+            const safeType = (n.data?.nodeType || 'node')
+              .replace(/\\/g, '\\\\')
+              .replace(/"/g, '\\"');
+            return `    unreal.log("  * [Node: ${safeTitle} | Type: ${safeType}]")`;
+          }
         )
         .join('\n')
-    : '        unreal.log("  * (Empty graph)")';
+    : '    unreal.log("  * (Empty graph)")';
 
   const script = `"""
 ================================================================================
@@ -129,9 +148,24 @@ ${nodeSummaryLines}
     try:
         editor_asset_lib.save_loaded_asset(blueprint_asset)
         unreal.log(f"[Noder] Asset registered and saved to disk: {full_asset_path}")
-        unreal.log("[Noder] You can now paste the nodes into the EventGraph using Ctrl + V.")
     except Exception as exc:
         unreal.log_error(f"[Noder] Failed to save asset: {str(exc)}")
+
+    # Automatically inject T3D graph into Unreal Engine clipboard
+    try:
+        unreal.SystemLibrary.set_clipboard_content(T3D_CLIPBOARD_DATA)
+        unreal.log("[Noder] Graph clipboard buffer filled via unreal.SystemLibrary.set_clipboard_content. Open the Blueprint and press Ctrl+V!")
+    except Exception as exc:
+        unreal.log_warning(f"[Noder] Could not set clipboard content directly: {exc}")
+
+    # Launch asset in Unreal Engine Asset Editor
+    try:
+        asset_editor_subsystem = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
+        if asset_editor_subsystem:
+            asset_editor_subsystem.open_editor_for_assets([blueprint_asset])
+            unreal.log(f"[Noder] Opened {full_asset_path} in Unreal Asset Editor.")
+    except Exception as exc:
+        unreal.log_warning(f"[Noder] Could not open asset in editor subsystem: {exc}")
 
     unreal.log("==================================================")
     unreal.log("[Noder] Blueprint synthesis completed successfully!")

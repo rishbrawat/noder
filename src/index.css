@@ -13,3 +13,16 @@
   Styling should be handled via Tailwind classes applied directly to components 
   and theme definitions in tailwind.config.js.
 */
+
+@keyframes blueprintWirePulse {
+  from {
+    stroke-dashoffset: 40;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-wire-pulse {
+  animation: blueprintWirePulse 0.75s linear infinite;
+}

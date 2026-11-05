@@ -16,7 +16,7 @@ export const NodeLibraryDrawer: React.FC<NodeLibraryDrawerProps> = ({
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  const categories = ['All', 'Events', 'Locomotion', 'Flow', 'World', 'Math'];
+  const categories = ['All', 'Events', 'Locomotion', 'Flow', 'World', 'Physics', 'Math', 'Audio/VFX', 'UI'];
 
   const filteredNodes = useMemo(() => {
     return STANDARD_UE_NODES.filter(node => {

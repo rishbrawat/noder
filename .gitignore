@@ -24,8 +24,11 @@ dist-ssr
 *.sw?
 .env
 
-# Python
+# Python & Local Caches
 __pycache__/
 *.py[cod]
 *.venv
 venv/
+.cache/
+api/.cache/
+.agents/

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { calculateBlueprintLayout } from '../blueprintLayout';
-import { LLMNodeData, LLMConnectionData } from '../../types/BlueprintTypes';
+import { calculateBlueprintLayout, formatGraphLayout } from '../blueprintLayout';
+import { LLMNodeData, LLMConnectionData, NodeData } from '../../types/BlueprintTypes';
+import { Node, Edge } from 'reactflow';
 
 describe('calculateBlueprintLayout', () => {
   it('calculates non-overlapping horizontal layers for sequential execution', () => {
@@ -71,6 +72,55 @@ describe('calculateBlueprintLayout', () => {
     const positions = calculateBlueprintLayout(nodes, []);
     expect(positions.get('n1')).toEqual({ x: 100, y: 150 });
     expect(positions.get('n2')).toEqual({ x: 500, y: 150 });
+  });
+
+  it('formats active ReactFlow Blueprint canvas into linear execution flow with pure node alignment', () => {
+    const nodes: Node<NodeData>[] = [
+      {
+        id: 'ev-1',
+        type: 'customNode',
+        position: { x: 0, y: 0 },
+        data: { title: 'Event BeginPlay', nodeType: 'event', inputs: [], outputs: [{ name: 'Then', type: 'exec' }] },
+      },
+      {
+        id: 'fn-1',
+        type: 'customNode',
+        position: { x: 0, y: 0 },
+        data: {
+          title: 'Print String',
+          nodeType: 'function',
+          inputs: [{ name: 'Execute', type: 'exec' }, { name: 'In String', type: 'string' }],
+          outputs: [{ name: 'Then', type: 'exec' }],
+        },
+      },
+      {
+        id: 'pure-1',
+        type: 'customNode',
+        position: { x: 0, y: 0 },
+        data: {
+          title: 'Get Actor Name',
+          nodeType: 'function',
+          inputs: [],
+          outputs: [{ name: 'Return Value', type: 'string' }],
+        },
+      },
+    ];
+
+    const edges: Edge[] = [
+      { id: 'e1', source: 'ev-1', target: 'fn-1', sourceHandle: 'exec-then', targetHandle: 'exec-execute', data: { pinType: 'exec' } },
+      { id: 'e2', source: 'pure-1', target: 'fn-1', sourceHandle: 'string-return', targetHandle: 'string-instring', data: { pinType: 'string' } },
+    ];
+
+    const formatted = formatGraphLayout(nodes, edges);
+    const evNode = formatted.find(n => n.id === 'ev-1')!;
+    const fnNode = formatted.find(n => n.id === 'fn-1')!;
+    const pureNode = formatted.find(n => n.id === 'pure-1')!;
+
+    // Verification: Event is to the left of the Impure Function
+    expect(evNode.position.x).toBeLessThan(fnNode.position.x);
+
+    // Verification: Pure Node is positioned to the left/underneath its consumer
+    expect(pureNode.position.x).toBeLessThan(fnNode.position.x);
   });
 });
 

@@ -121,6 +121,13 @@ export function profileBlueprintGraph(
       penaltyPoints += 25;
       reason = 'GetAllActorsOfClass performs a synchronous full-world scan of all active actors.';
       recommendation = 'Cache actor references at BeginPlay or maintain a gameplay subsystem registry.';
+    } else if (isDownstreamOfTick && (lowerTitle.includes('loop') || lowerTitle.includes('while'))) {
+      severity = 'critical';
+      costScore = 9;
+      heavyOperationCount++;
+      penaltyPoints += 22;
+      reason = `Loop construct (${title}) executing on every tick causes CPU spikes and framerate drops.`;
+      recommendation = 'Break large loops across multiple frames using latent timers or move to C++ async tasks.';
     } else if (isDownstreamOfTick && (lowerTitle.includes('trace') || lowerTitle.includes('cast'))) {
       severity = 'critical';
       costScore = 8;
@@ -168,6 +175,14 @@ export function profileBlueprintGraph(
   }
   if (heavyOperationCount > 0) {
     recommendations.push('Avoid GetAllActorsOfClass queries during gameplay. Store references in GameMode or Subsystems.');
+  }
+  const loopOnTick = nodes.some(n => tickDownstreamIds.has(n.id) && /loop/i.test(n.data?.title || ''));
+  if (loopOnTick) {
+    recommendations.push('Per-frame loop detected downstream of Event Tick. Move loop logic to Event Timers or asynchronous C++ tasks.');
+  }
+  const playerControllerCount = nodes.filter(n => /get player controller/i.test(n.data?.title || '')).length;
+  if (playerControllerCount >= 2) {
+    recommendations.push(`Detected ${playerControllerCount} redundant "Get Player Controller" queries. Cache into a local player variable.`);
   }
   const castCount = nodes.filter(n => (n.data?.title || '').toLowerCase().includes('cast')).length;
   if (castCount >= 3) {

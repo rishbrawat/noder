@@ -7,6 +7,8 @@ interface OutputLogConsoleProps {
   isSimulating: boolean;
   isPaused?: boolean;
   isAudioMuted?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: (expanded: boolean) => void;
   onToggleMute?: () => void;
   onStartSimulation: () => void;
   onStopSimulation: () => void;
@@ -20,6 +22,8 @@ export const OutputLogConsole: React.FC<OutputLogConsoleProps> = ({
   isSimulating,
   isPaused,
   isAudioMuted,
+  isExpanded: controlledExpanded,
+  onToggleExpand,
   onToggleMute,
   onStartSimulation,
   onStopSimulation,
@@ -27,10 +31,22 @@ export const OutputLogConsole: React.FC<OutputLogConsoleProps> = ({
   onStepForward,
   onClearLogs,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'exec' | 'data'>('all');
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+
+  const handleToggle = () => {
+    const next = !isExpanded;
+    if (onToggleExpand) {
+      onToggleExpand(next);
+    } else {
+      setInternalExpanded(next);
+    }
+  };
+  const [filter, setFilter] = useState<'all' | 'ai' | 'compiler' | 'exec' | 'data'>('all');
 
   const filteredLogs = logs.filter(l => {
+    if (filter === 'ai') return l.type === 'ai';
+    if (filter === 'compiler') return l.type === 'compiler';
     if (filter === 'exec') return l.type === 'exec';
     if (filter === 'data') return l.type === 'data';
     return true;
@@ -44,7 +60,7 @@ export const OutputLogConsole: React.FC<OutputLogConsoleProps> = ({
       <div className="h-8 px-4 flex items-center justify-between bg-noder-dark border-b border-zinc-900 shrink-0 text-xs">
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={handleToggle}
             className="flex items-center space-x-1.5 text-zinc-400 hover:text-white transition-colors"
           >
             <LuTerminal className="w-3.5 h-3.5 text-gold-500" />
@@ -124,19 +140,31 @@ export const OutputLogConsole: React.FC<OutputLogConsoleProps> = ({
             <span className="text-zinc-500">Filter:</span>
             <button
               onClick={() => setFilter('all')}
-              className={`px-1.5 py-0.5 rounded ${filter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-1.5 py-0.5 rounded transition-colors ${filter === 'all' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               All ({logs.length})
             </button>
             <button
+              onClick={() => setFilter('ai')}
+              className={`px-1.5 py-0.5 rounded transition-colors ${filter === 'ai' ? 'bg-gold-500/20 text-gold-400 border border-gold-500/40' : 'text-zinc-500 hover:text-gold-300'}`}
+            >
+              AI Plan
+            </button>
+            <button
+              onClick={() => setFilter('compiler')}
+              className={`px-1.5 py-0.5 rounded transition-colors ${filter === 'compiler' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40' : 'text-zinc-500 hover:text-sky-300'}`}
+            >
+              Compiler
+            </button>
+            <button
               onClick={() => setFilter('exec')}
-              className={`px-1.5 py-0.5 rounded ${filter === 'exec' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-1.5 py-0.5 rounded transition-colors ${filter === 'exec' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Exec
             </button>
             <button
               onClick={() => setFilter('data')}
-              className={`px-1.5 py-0.5 rounded ${filter === 'data' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-1.5 py-0.5 rounded transition-colors ${filter === 'data' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Data
             </button>
@@ -163,13 +191,19 @@ export const OutputLogConsole: React.FC<OutputLogConsoleProps> = ({
             filteredLogs.map(l => (
               <div key={l.id} className="flex items-start space-x-2">
                 <span className="text-zinc-600 shrink-0 text-[10px]">{l.timestamp}</span>
-                <span className={`flex-1 ${
-                  l.type === 'exec'
+                <span className={`flex-1 break-words ${
+                  l.type === 'ai'
+                    ? 'text-gold-400 font-medium'
+                    : l.type === 'compiler'
+                    ? 'text-sky-400'
+                    : l.type === 'exec'
                     ? 'text-gold-300 font-semibold'
                     : l.type === 'data'
                     ? 'text-green-400'
                     : l.type === 'warn'
                     ? 'text-red-400'
+                    : l.type === 'success'
+                    ? 'text-emerald-400 font-semibold'
                     : 'text-zinc-400'
                 }`}>
                   {l.message}

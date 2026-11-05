@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useBlueprintStore } from '../store/blueprintStore';
 import { BlueprintGenerationService } from '../services/blueprintGenerationService';
@@ -6,50 +6,125 @@ import { LLMBlueprintData, BlueprintNode, BlueprintEdge } from '../types/Bluepri
 import { auth } from '../services/firebase';
 import { calculateBlueprintLayout } from '../utils/blueprintLayout';
 import { getNodeColor } from '../utils/ueT3DParser';
+import { applyBlueprintPatch } from '../utils/blueprintPatcher';
+import { sanitizeBlueprintData } from '../utils/blueprintSanitizer';
 import { toast } from 'react-hot-toast';
+
+export interface GenerateBlueprintOptions {
+  isPatch?: boolean;
+  currentGraphIR?: any;
+  scopedNodeIds?: string[];
+}
 
 export const useBlueprint = () => {
   const store = useBlueprintStore();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
-   * Load a blueprint from LLM-generated JSON data.
+   * Cancel in-flight blueprint generation.
    */
-  const loadBlueprintFromLLM = useCallback(async (query: string, targetClass: string = 'Actor') => {
+  const cancelGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    store.setIsLoading(false);
+    toast('Blueprint synthesis cancelled', { icon: '⏹️' });
+  }, [store]);
+
+  /**
+   * Load or patch a blueprint from LLM-generated JSON data.
+   */
+  const loadBlueprintFromLLM = useCallback(async (
+    query: string,
+    targetClass: string = 'Actor',
+    options?: GenerateBlueprintOptions
+  ) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       store.setIsLoading(true);
+      store.addLog({
+        type: 'ai',
+        message: `LogNoderAI: Initiating ${options?.isPatch ? 'incremental patch' : 'blueprint generation'} for query: "${query}" (Target: ${targetClass})...`,
+      });
 
       const user = auth.currentUser;
       const idToken = user ? await user.getIdToken() : undefined;
 
-      const response = await BlueprintGenerationService.generateFromQuery(query, idToken, targetClass);
+      const response = await BlueprintGenerationService.generateFromQuery(
+        query,
+        idToken,
+        targetClass,
+        options?.currentGraphIR,
+        options?.scopedNodeIds,
+        controller.signal
+      );
       
       if (!response) {
         throw new Error('No response received from generation API');
       }
 
-      let parsedData: LLMBlueprintData;
+      let parsedData: any;
       try {
-        parsedData = JSON.parse(response) as LLMBlueprintData;
+        parsedData = JSON.parse(response);
       } catch (parseError) {
         console.error('Failed to parse blueprint JSON:', parseError);
         throw new Error('Invalid JSON response from server');
       }
+
+      // Strictly clamp and sanitize schema against canonical Unreal Engine definitions
+      if (parsedData?.nodes && Array.isArray(parsedData.nodes)) {
+        const sanitized = sanitizeBlueprintData(parsedData);
+        parsedData = sanitized.data;
+      }
+
+      if (parsedData.architecturePlan) {
+        store.setArchitecturePlan(parsedData.architecturePlan);
+        store.addLog({
+          type: 'ai',
+          message: `LogNoderAI: Architecture Plan:\n${parsedData.architecturePlan}`,
+        });
+      }
       
-      if (!parsedData.nodes || !Array.isArray(parsedData.nodes)) {
+      // If server returned a delta patch, apply patch in-place preserving layout
+      if (parsedData._meta?.mode === 'patch' || options?.isPatch) {
+        store.pushHistory('AI Patch');
+        const currentNodes = useBlueprintStore.getState().nodes;
+        const currentEdges = useBlueprintStore.getState().edges;
+        const patchResult = applyBlueprintPatch(currentNodes, currentEdges, parsedData);
+        store.setNodes(patchResult.nodes);
+        store.setEdges(patchResult.edges);
+        store.addLog({
+          type: 'compiler',
+          message: `LogBlueprintCompiler: Patch merged successfully (+${patchResult.stats.addedNodes} nodes, ${patchResult.nodes.length} total, ${patchResult.edges.length} wires).`,
+        });
+        toast.success(patchResult.summary || 'Graph patched successfully!');
+        return;
+      }
+
+      // Otherwise, perform full fresh graph generation
+      const fullData = parsedData as LLMBlueprintData;
+      store.pushHistory('AI Generation');
+      if (!fullData.nodes || !Array.isArray(fullData.nodes)) {
         throw new Error('Invalid blueprint data: missing nodes array');
       }
 
-      if (!parsedData.connections || !Array.isArray(parsedData.connections)) {
+      if (!fullData.connections || !Array.isArray(fullData.connections)) {
         throw new Error('Invalid blueprint data: missing connections array');
       }
 
       const idMapping: Record<string, string> = {};
       
       // Calculate balanced non-overlapping coordinates (DAG layout)
-      const layoutPositions = calculateBlueprintLayout(parsedData.nodes, parsedData.connections);
+      const layoutPositions = calculateBlueprintLayout(fullData.nodes, fullData.connections);
 
       // Generate React Flow nodes
-      const nodes: BlueprintNode[] = parsedData.nodes.map((node) => {
+      const nodes: BlueprintNode[] = fullData.nodes.map((node) => {
         const newId = uuidv4();
         idMapping[node.id] = newId;
         
@@ -75,9 +150,9 @@ export const useBlueprint = () => {
       });
 
       // Generate React Flow edges
-      const edges: BlueprintEdge[] = parsedData.connections.map((connection) => {
-        const sourceNode = parsedData.nodes.find(n => n.id === connection.sourceNodeId);
-        const targetNode = parsedData.nodes.find(n => n.id === connection.targetNodeId);
+      const edges: BlueprintEdge[] = fullData.connections.map((connection) => {
+        const sourceNode = fullData.nodes.find(n => n.id === connection.sourceNodeId);
+        const targetNode = fullData.nodes.find(n => n.id === connection.targetNodeId);
         
         const sourcePin = sourceNode?.outputs?.find(p => p.name === connection.sourcePinName);
         const targetPin = targetNode?.inputs?.find(p => p.name === connection.targetPinName);
@@ -90,6 +165,7 @@ export const useBlueprint = () => {
         
         return {
           id: uuidv4(),
+          type: 'blueprintEdge',
           source: idMapping[connection.sourceNodeId],
           sourceHandle: sourceHandleId,
           target: idMapping[connection.targetNodeId],
@@ -101,15 +177,32 @@ export const useBlueprint = () => {
       });
 
       // Update the store
-      store.setBlueprintName(parsedData.blueprintName || 'Untitled Blueprint');
-      store.setBlueprintDescription(parsedData.blueprintDescription || '');
+      store.setBlueprintName(fullData.blueprintName || 'Untitled Blueprint');
+      store.setBlueprintDescription(fullData.blueprintDescription || '');
       store.setNodes(nodes);
       store.setEdges(edges);
       
-      toast.success('Blueprint generated successfully!');
+      const meta = fullData._meta as { source?: string; similarity?: number; model?: string } | undefined;
+      store.addLog({
+        type: 'compiler',
+        message: `LogBlueprintCompiler: Compiled ${nodes.length} nodes and ${edges.length} wires into Unreal Engine graph (Model: ${meta?.model || 'Gemini'}).`,
+      });
+
+      if (meta?.source === 'canonical_template') {
+        toast.success(`Canonical Blueprint loaded (0 tokens burned, <10ms)!`);
+      } else if (meta?.source?.includes('cache')) {
+        toast.success(`Cache Hit: Served instantly (0 tokens burned)!`);
+      } else {
+        toast.success('Blueprint generated successfully!');
+      }
     } catch (error) {
       console.error('Error loading blueprint:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate blueprint');
+      const errMsg = error instanceof Error ? error.message : 'Failed to generate blueprint';
+      store.addLog({
+        type: 'warn',
+        message: `LogError: ${errMsg}`,
+      });
+      toast.error(errMsg);
     } finally {
       store.setIsLoading(false);
     }
@@ -152,6 +245,7 @@ export const useBlueprint = () => {
   
   return {
     loadBlueprint: loadBlueprintFromLLM,
+    cancelGeneration,
     exportBlueprint,
     clearBlueprint,
     isLoading: store.isLoading,

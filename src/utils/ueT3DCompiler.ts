@@ -1,5 +1,5 @@
 import { Node, Edge } from 'reactflow';
-import { NodeData, T3DCompileResult } from '../types/BlueprintTypes';
+import { NodeData, T3DCompileResult, normalizeContainerType } from '../types/BlueprintTypes';
 
 export type { T3DCompileResult };
 
@@ -24,6 +24,12 @@ export const PIN_CATEGORY_MAP: Record<string, { category: string; subCategoryObj
   class: { category: 'class', subCategoryObject: '/Script/CoreUObject.Class' },
   wildcard: { category: 'wildcard' },
   materialattributes: { category: 'struct', subCategoryObject: '/Script/Engine.MaterialAttributes' },
+  array: { category: 'string' },
+  set: { category: 'string' },
+  map: { category: 'string' },
+  TArray: { category: 'string' },
+  TSet: { category: 'string' },
+  TMap: { category: 'string' },
 };
 
 /**
@@ -43,6 +49,26 @@ const sanitizePinName = (name: string): string => {
   if (trimmed.toLowerCase() === 'execute' || trimmed.toLowerCase() === 'in') return 'execute';
   if (trimmed.toLowerCase() === 'then' || trimmed.toLowerCase() === 'out') return 'then';
   return trimmed;
+};
+
+/**
+ * Normalizes pin names for lookup across React Flow handles and UE5 pin definitions.
+ * Strips whitespace, hyphens, and underscores, and converts to lower case so that:
+ * "Return Value", "return-value", "return_value", and "returnvalue" all map to "returnvalue".
+ */
+export const normalizePinLookupKey = (name: string): string => {
+  const sanitized = sanitizePinName(name);
+  return sanitized.toLowerCase().replace(/[\s_-]+/g, '');
+};
+
+/**
+ * Extracts pin name from React Flow handle identifier (e.g. 'int-return-value' -> 'return-value', or 'execute' -> 'execute').
+ */
+export const extractPinNameFromHandle = (handle?: string | null): string => {
+  if (!handle) return '';
+  const firstDash = handle.indexOf('-');
+  if (firstDash === -1) return handle;
+  return handle.substring(firstDash + 1);
 };
 
 /**
@@ -75,6 +101,8 @@ export function compileGraphToT3D(
       baseClassName = 'K2Node_Event';
     } else if (node.data?.title?.toLowerCase() === 'branch') {
       baseClassName = 'K2Node_IfThenElse';
+    } else if (node.data?.title?.toLowerCase().startsWith('break ') || node.data?.title?.toLowerCase().startsWith('make ')) {
+      baseClassName = node.data?.title?.toLowerCase().startsWith('break ') ? 'K2Node_BreakStruct' : 'K2Node_MakeStruct';
     } else if (nodeType === 'variable') {
       baseClassName = node.data?.title?.toLowerCase().startsWith('set') ? 'K2Node_VariableSet' : 'K2Node_VariableGet';
     }
@@ -83,13 +111,17 @@ export function compileGraphToT3D(
     nodeNameMap.set(node.id, ueNodeName);
 
     (node.data?.inputs || []).forEach(pin => {
-      const sanitized = sanitizePinName(pin.name);
-      pinGuidMap.set(`${node.id}:in:${sanitized.toLowerCase()}`, generateUEGuid());
+      const guid = generateUEGuid();
+      const normKey = normalizePinLookupKey(pin.name);
+      pinGuidMap.set(`${node.id}:in:${normKey}`, guid);
+      pinGuidMap.set(`${node.id}:in:${sanitizePinName(pin.name).toLowerCase()}`, guid);
     });
 
     (node.data?.outputs || []).forEach(pin => {
-      const sanitized = sanitizePinName(pin.name);
-      pinGuidMap.set(`${node.id}:out:${sanitized.toLowerCase()}`, generateUEGuid());
+      const guid = generateUEGuid();
+      const normKey = normalizePinLookupKey(pin.name);
+      pinGuidMap.set(`${node.id}:out:${normKey}`, guid);
+      pinGuidMap.set(`${node.id}:out:${sanitizePinName(pin.name).toLowerCase()}`, guid);
     });
   });
 
@@ -101,19 +133,24 @@ export function compileGraphToT3D(
     const sourceNodeName = nodeNameMap.get(edge.source);
     const targetNodeName = nodeNameMap.get(edge.target);
 
-    // Handles are formatted as `${pinType}-${pinName}`
-    const rawSourcePin = edge.sourceHandle?.split('-').slice(1).join('-') || 'then';
-    const rawTargetPin = edge.targetHandle?.split('-').slice(1).join('-') || 'execute';
+    // Handles are formatted as `${pinType}-${pinName}` or bare pin names
+    const rawSourcePin = extractPinNameFromHandle(edge.sourceHandle) || 'then';
+    const rawTargetPin = extractPinNameFromHandle(edge.targetHandle) || 'execute';
 
     const sourcePin = sanitizePinName(rawSourcePin);
     const targetPin = sanitizePinName(rawTargetPin);
 
-    const sourcePinGuid = pinGuidMap.get(`${edge.source}:out:${sourcePin.toLowerCase()}`);
-    const targetPinGuid = pinGuidMap.get(`${edge.target}:in:${targetPin.toLowerCase()}`);
+    const normSource = normalizePinLookupKey(rawSourcePin);
+    const normTarget = normalizePinLookupKey(rawTargetPin);
+
+    const sourcePinGuid = pinGuidMap.get(`${edge.source}:out:${normSource}`)
+      || pinGuidMap.get(`${edge.source}:out:${sourcePin.toLowerCase()}`);
+    const targetPinGuid = pinGuidMap.get(`${edge.target}:in:${normTarget}`)
+      || pinGuidMap.get(`${edge.target}:in:${targetPin.toLowerCase()}`);
 
     if (sourceNodeName && targetNodeName && sourcePinGuid && targetPinGuid) {
-      const outKey = `${edge.source}:out:${sourcePin.toLowerCase()}`;
-      const inKey = `${edge.target}:in:${targetPin.toLowerCase()}`;
+      const outKey = `${edge.source}:out:${normSource}`;
+      const inKey = `${edge.target}:in:${normTarget}`;
 
       connectionsOut.set(outKey, [...(connectionsOut.get(outKey) || []), { targetNodeName, targetPinGuid }]);
       connectionsIn.set(inKey, [...(connectionsIn.get(inKey) || []), { sourceNodeName, sourcePinGuid }]);
@@ -150,7 +187,12 @@ export function compileGraphToT3D(
     let ueClass = '/Script/BlueprintGraph.K2Node_CallFunction';
     let extraHeader = '';
 
-    if (nodeType === 'event' || title.toLowerCase().startsWith('inputaction')) {
+    const normTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (nodeType === 'reroute' || title.toLowerCase() === 'reroute') {
+      ueClass = '/Script/BlueprintGraph.K2Node_Knot';
+      extraHeader = '';
+    } else if (nodeType === 'event' || title.toLowerCase().startsWith('inputaction')) {
       ueClass = '/Script/BlueprintGraph.K2Node_Event';
       const eventName = title.includes('BeginPlay') ? 'ReceiveBeginPlay' :
                         title.includes('Tick') ? 'ReceiveTick' :
@@ -159,16 +201,43 @@ export function compileGraphToT3D(
       extraHeader = `   EventReference=(MemberParent=Class'"/Script/Engine.Actor"',MemberName="${eventName}")\n   bOverrideFunction=True\n`;
     } else if (title.toLowerCase() === 'branch') {
       ueClass = '/Script/BlueprintGraph.K2Node_IfThenElse';
+    } else if (nodeType === 'macro' || normTitle === 'foreachloop' || normTitle === 'flipflop' || normTitle === 'gate') {
+      ueClass = '/Script/BlueprintGraph.K2Node_MacroInstance';
+      const macroName = normTitle.includes('foreach') ? 'ForEachLoop' :
+                        normTitle.includes('flipflop') ? 'FlipFlop' :
+                        normTitle.includes('gate') ? 'Gate' :
+                        title.replace(/[^a-zA-Z0-9]/g, '');
+      extraHeader = `   MacroGraphReference=(MacroGraph=EdGraph'"/Engine/EditorBlueprintResources/StandardMacros.StandardMacros:${macroName}"')\n`;
+    } else if (title.toLowerCase().startsWith('break ') || title.toLowerCase().startsWith('make ')) {
+      const isBreak = title.toLowerCase().startsWith('break ');
+      ueClass = isBreak ? '/Script/BlueprintGraph.K2Node_BreakStruct' : '/Script/BlueprintGraph.K2Node_MakeStruct';
+      const rawStructName = title.replace(/^(break|make)\s+/i, '').replace(/\s+/g, '');
+      const structName = rawStructName.toLowerCase() === 'hitresult' ? 'HitResult' : rawStructName;
+      extraHeader = `   StructType=ScriptStruct'"/Script/Engine.${structName}"'\n`;
     } else if (nodeType === 'variable') {
       const isSet = title.toLowerCase().startsWith('set');
       ueClass = isSet ? '/Script/BlueprintGraph.K2Node_VariableSet' : '/Script/BlueprintGraph.K2Node_VariableGet';
       const varName = title.replace(/^(get|set)\s*/i, '').replace(/\s+/g, '');
       extraHeader = `   VariableReference=(MemberName="${varName}",bSelfContext=True)\n`;
     } else {
-      const funcName = title.replace(/[^a-zA-Z0-9]/g, '');
+      const funcName = title.replace(/[^a-zA-Z0-9_]/g, '');
       const isGameplayStatics = /PlaySound|SpawnEmitter|GetPlayer|LineTrace|OpenLevel/i.test(title);
       const isCharacterMovement = /WalkSpeed|JumpZ|MovementMode/i.test(title);
-      const parentClass = isGameplayStatics
+      const hasArrayPin = (node.data?.inputs || []).some(p => normalizeContainerType(p.containerType, p.type) === 'array');
+      const hasSetPin = (node.data?.inputs || []).some(p => normalizeContainerType(p.containerType, p.type) === 'set');
+      const hasMapPin = (node.data?.inputs || []).some(p => normalizeContainerType(p.containerType, p.type) === 'map');
+
+      const isArrayOp = hasArrayPin || /array/i.test(title) || /^Array_/i.test(funcName);
+      const isSetOp = hasSetPin || /^(set\s+(add|remove|contains|clear|length|find|union|intersect)|set_)/i.test(title) || /^Set_/i.test(funcName);
+      const isMapOp = hasMapPin || /map/i.test(title) || /^Map_/i.test(funcName);
+
+      const parentClass = isArrayOp
+        ? 'KismetArrayLibrary'
+        : isSetOp
+        ? 'KismetSetLibrary'
+        : isMapOp
+        ? 'KismetMapLibrary'
+        : isGameplayStatics
         ? 'GameplayStatics'
         : isCharacterMovement
         ? 'CharacterMovementComponent'
@@ -182,15 +251,25 @@ export function compileGraphToT3D(
     nodeBlock += `   NodePosY=${posY}\n`;
     nodeBlock += `   NodeGuid=${nodeGuid}\n`;
 
-    // Serialize Input Pins
-    (node.data?.inputs || []).forEach(pin => {
+    // Helper to format pin attributes including UE5 container properties
+    const formatPin = (
+      pin: any,
+      direction: 'EGPD_Input' | 'EGPD_Output',
+      pinGuid: string,
+      links: any[]
+    ): string => {
       const sanitizedName = sanitizePinName(pin.name);
-      const pinGuid = pinGuidMap.get(`${node.id}:in:${sanitizedName.toLowerCase()}`) || generateUEGuid();
-      const cat = PIN_CATEGORY_MAP[pin.type] || { category: 'string' };
+      const container = normalizeContainerType(pin.containerType, pin.type);
 
-      const links = connectionsIn.get(`${node.id}:in:${sanitizedName.toLowerCase()}`) || [];
+      let effectiveType = pin.type;
+      if (container !== 'none') {
+        effectiveType = pin.innerType || (pin.type !== 'array' && pin.type !== 'TArray' && pin.type !== 'set' && pin.type !== 'TSet' && pin.type !== 'map' && pin.type !== 'TMap' ? pin.type : 'int');
+      }
+
+      const cat = PIN_CATEGORY_MAP[effectiveType] || { category: 'string' };
+
       const linkedToStr = links.length > 0
-        ? `LinkedTo=(${links.map(l => `${l.sourceNodeName} ${l.sourcePinGuid}`).join(',')},)`
+        ? `LinkedTo=(${links.map((l: any) => `${l.targetNodeName || l.sourceNodeName} ${l.targetPinGuid || l.sourcePinGuid}`).join(',')},)`
         : '';
 
       const defVal = (pin.value !== undefined && pin.value !== null && links.length === 0)
@@ -199,23 +278,35 @@ export function compileGraphToT3D(
 
       const subCat = cat.subCategoryObject ? `PinType.PinSubCategoryObject=${cat.subCategoryObject} ` : '';
 
-      nodeBlock += `   CustomProperties Pin (PinId=${pinGuid},PinName="${sanitizedName}",PinType.PinCategory="${cat.category}",${subCat}Direction="EGPD_Input",${defVal}${linkedToStr})\n`;
+      let containerProps = '';
+      if (container === 'array') {
+        containerProps = 'PinType.ContainerType=Array,PinType.bIsArray=True,';
+      } else if (container === 'set') {
+        containerProps = 'PinType.ContainerType=Set,PinType.bIsSet=True,';
+      } else if (container === 'map') {
+        const valType = pin.valueType || 'int';
+        const valCat = PIN_CATEGORY_MAP[valType] || { category: 'int' };
+        const valSub = valCat.subCategoryObject ? `,TerminalSubCategoryObject=${valCat.subCategoryObject}` : '';
+        containerProps = `PinType.ContainerType=Map,PinType.bIsMap=True,PinType.PinValueType=(TerminalCategory="${valCat.category}"${valSub}),`;
+      }
+
+      return `   CustomProperties Pin (PinId=${pinGuid},PinName="${sanitizedName}",PinType.PinCategory="${cat.category}",${subCat}${containerProps}Direction="${direction}",${defVal}${linkedToStr})\n`;
+    };
+
+    // Serialize Input Pins
+    (node.data?.inputs || []).forEach(pin => {
+      const normKey = normalizePinLookupKey(pin.name);
+      const pinGuid = pinGuidMap.get(`${node.id}:in:${normKey}`) || generateUEGuid();
+      const links = connectionsIn.get(`${node.id}:in:${normKey}`) || [];
+      nodeBlock += formatPin(pin, 'EGPD_Input', pinGuid, links);
     });
 
     // Serialize Output Pins
     (node.data?.outputs || []).forEach(pin => {
-      const sanitizedName = sanitizePinName(pin.name);
-      const pinGuid = pinGuidMap.get(`${node.id}:out:${sanitizedName.toLowerCase()}`) || generateUEGuid();
-      const cat = PIN_CATEGORY_MAP[pin.type] || { category: 'string' };
-
-      const links = connectionsOut.get(`${node.id}:out:${sanitizedName.toLowerCase()}`) || [];
-      const linkedToStr = links.length > 0
-        ? `LinkedTo=(${links.map(l => `${l.targetNodeName} ${l.targetPinGuid}`).join(',')},)`
-        : '';
-
-      const subCat = cat.subCategoryObject ? `PinType.PinSubCategoryObject=${cat.subCategoryObject} ` : '';
-
-      nodeBlock += `   CustomProperties Pin (PinId=${pinGuid},PinName="${sanitizedName}",PinType.PinCategory="${cat.category}",${subCat}Direction="EGPD_Output",${linkedToStr})\n`;
+      const normKey = normalizePinLookupKey(pin.name);
+      const pinGuid = pinGuidMap.get(`${node.id}:out:${normKey}`) || generateUEGuid();
+      const links = connectionsOut.get(`${node.id}:out:${normKey}`) || [];
+      nodeBlock += formatPin(pin, 'EGPD_Output', pinGuid, links);
     });
 
     nodeBlock += `End Object\n`;

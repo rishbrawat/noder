@@ -1,5 +1,5 @@
 import React from 'react';
-import { LuX, LuFlame, LuShieldAlert, LuActivity } from 'react-icons/lu';
+import { LuX, LuFlame, LuShieldAlert, LuActivity, LuWrench } from 'react-icons/lu';
 import { PerformanceAuditResult } from '../../types/BlueprintTypes';
 
 interface BlueprintProfilerModalProps {
@@ -8,6 +8,7 @@ interface BlueprintProfilerModalProps {
   audit: PerformanceAuditResult;
   isHeatmapActive: boolean;
   onToggleHeatmap: () => void;
+  onOpenRefactor?: () => void;
 }
 
 export const BlueprintProfilerModal: React.FC<BlueprintProfilerModalProps> = ({
@@ -16,6 +17,7 @@ export const BlueprintProfilerModal: React.FC<BlueprintProfilerModalProps> = ({
   audit,
   isHeatmapActive,
   onToggleHeatmap,
+  onOpenRefactor,
 }) => {
   if (!isOpen) return null;
 
@@ -174,12 +176,26 @@ export const BlueprintProfilerModal: React.FC<BlueprintProfilerModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-2.5 bg-noder-panel border-t border-zinc-800 text-[11px] text-zinc-400">
           <span>Based on Epic Games Unreal Engine 5 Performance & Optimization Guide</span>
-          <button
-            onClick={onClose}
-            className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs transition-colors"
-          >
-            Close
-          </button>
+          <div className="flex items-center space-x-2">
+            {onOpenRefactor && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenRefactor();
+                }}
+                className="flex items-center space-x-1.5 px-3 py-1 rounded bg-gold-500 hover:bg-gold-400 text-black text-xs font-semibold shadow-sm transition-all"
+              >
+                <LuWrench size={13} />
+                <span>Auto-Refactor & Prune</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
