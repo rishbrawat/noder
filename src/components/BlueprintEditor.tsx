@@ -116,6 +116,16 @@ export const BlueprintEditor: React.FC = () => {
     return evaluateMaterialGraph(nodes, edges);
   }, [nodes, edges]);
 
+  const detailsOffsetRight = useMemo(() => {
+    if (activeGraphType === 'NiagaraVFX' || activeGraphType === 'ShadersUE') {
+      return 'right-96';
+    }
+    if (activeGraphType === 'GASStudio') {
+      return 'right-[420px]';
+    }
+    return 'right-0';
+  }, [activeGraphType]);
+
   const effectiveNiagaraConfig = useMemo(() => {
     if (activeGraphType === 'NiagaraVFX') {
       return evaluateNiagaraGraph(nodes, edges, niagaraConfig);
@@ -599,7 +609,17 @@ export const BlueprintEditor: React.FC = () => {
             </div>
           )}
         </div>
-        <NodeDetailsDrawer selectedNodes={selectedNodesList} edges={edges} isOpen={panelState.isDetailsOpen} onToggle={() => setPanelState(s => ({ ...s, isDetailsOpen: !s.isDetailsOpen }))} onWrapComment={handleAddComment} onStraighten={handleStraightenConnections} onDuplicate={handleDuplicateSelected} onDelete={handleDeleteSelected} />
+        <NodeDetailsDrawer
+          selectedNodes={selectedNodesList}
+          edges={edges}
+          isOpen={panelState.isDetailsOpen}
+          offsetRight={detailsOffsetRight}
+          onToggle={() => setPanelState(s => ({ ...s, isDetailsOpen: !s.isDetailsOpen }))}
+          onWrapComment={handleAddComment}
+          onStraighten={handleStraightenConnections}
+          onDuplicate={handleDuplicateSelected}
+          onDelete={handleDeleteSelected}
+        />
         <OutputLogConsole logs={storeLogs} isSimulating={sim.isSimulating} isPaused={sim.isSimPaused} isAudioMuted={sim.isAudioMuted} isExpanded={panelState.isOutputLogExpanded} onToggleExpand={(exp) => setPanelState(s => ({ ...s, isOutputLogExpanded: exp }))} onToggleMute={sim.toggleAudioMute} onStartSimulation={sim.startSimulation} onStopSimulation={sim.stopSimulation} onResumeSimulation={sim.resumeSimulation} onStepForward={sim.stepForward} onClearLogs={clearLogs} />
         {contextMenuPos && (
           <UnrealContextMenu x={contextMenuPos.x} y={contextMenuPos.y} originPin={contextMenuOriginPin} onClose={() => { setContextMenuPos(null); setContextMenuOriginPin(null); }} onSelectNode={(preset, origin) => { handleAddNodeFromLibrary(preset, contextMenuPos, origin || contextMenuOriginPin); setContextMenuPos(null); setContextMenuOriginPin(null); }} onAddComment={handleAddComment} />

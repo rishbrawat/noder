@@ -96,24 +96,43 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     sizeAttr.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('pSize', sizeAttr);
 
-    // Points Material (Additive blending for VFX glow)
-    const material = new THREE.PointsMaterial({
-      size: 0.08,
-      vertexColors: true,
+    // Points Custom ShaderMaterial for soft, blooming circular particle billboards
+    const material = new THREE.ShaderMaterial({
       transparent: true,
-      blending: configRef.current.blendMode === 'Additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
       depthWrite: false,
-    });
-
-    material.onBeforeCompile = (shader) => {
-      shader.vertexShader = `
+      blending: configRef.current.blendMode === 'Additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+      vertexColors: true,
+      uniforms: {
+        uScale: { value: height / 2.0 },
+      },
+      vertexShader: `
         attribute float pSize;
-        ${shader.vertexShader.replace(
-          'gl_PointSize = size;',
-          'gl_PointSize = (pSize > 0.0 ? pSize * 0.08 : size);'
-        )}
-      `;
-    };
+        varying vec4 vColor;
+        uniform float uScale;
+
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float size = pSize > 0.0 ? pSize : 12.0;
+          // Scale size with camera perspective (UE Niagara sprite size)
+          gl_PointSize = size * (uScale / -mvPosition.z) * 0.15;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec4 vColor;
+
+        void main() {
+          vec2 coord = gl_PointCoord - vec2(0.5);
+          float dist = length(coord);
+          if (dist > 0.5) discard;
+          
+          // Anti-aliased soft circular falloff with core bloom
+          float glow = pow(1.0 - dist * 2.0, 1.6);
+          gl_FragColor = vec4(vColor.rgb * (1.0 + glow * 0.7), vColor.a * glow);
+        }
+      `,
+    });
 
     const points = new THREE.Points(geometry, material);
     scene.add(points);
@@ -157,6 +176,12 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
           cameraRef.current.aspect = newW / newH;
           cameraRef.current.updateProjectionMatrix();
           rendererRef.current.setSize(newW, newH);
+          if (pointsRef.current?.material) {
+            const sm = pointsRef.current.material as THREE.ShaderMaterial;
+            if (sm.uniforms?.uScale) {
+              sm.uniforms.uScale.value = newH / 2.0;
+            }
+          }
         }
       }
     });
@@ -180,7 +205,7 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
       engineRef.current.updateConfig(config);
     }
     if (pointsRef.current) {
-      const mat = pointsRef.current.material as THREE.PointsMaterial;
+      const mat = pointsRef.current.material as THREE.ShaderMaterial;
       if (mat) {
         mat.blending = config.blendMode === 'Additive' ? THREE.AdditiveBlending : THREE.NormalBlending;
         mat.needsUpdate = true;
@@ -293,13 +318,13 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
       />
 
       {/* Footer Info */}
-      <div className="px-3 py-1 bg-zinc-900/80 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-400 flex items-center justify-between">
-        <span>
-          Forces: Gravity ({config.gravityForceZ}) • Turbulence ({config.curlNoiseStrength}) • Drag ({config.dragCoefficient})
+      <div className="px-3 py-1 bg-zinc-900/80 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-400 flex items-center justify-between gap-2 overflow-hidden">
+        <span className="truncate" title={`Forces: Gravity (${config.gravityForceZ}) • Turbulence (${config.curlNoiseStrength}) • Drag (${config.dragCoefficient})${config.pointAttractorStrength ? ` • Attractor (${config.pointAttractorStrength})` : ''}${config.collisionEnabled ? ` • Floor Bounce (${config.bounciness ?? 0.45})` : ''}`}>
+          Forces: Gravity ({config.gravityForceZ}) • Turb ({config.curlNoiseStrength}) • Drag ({config.dragCoefficient})
           {config.pointAttractorStrength ? ` • Attractor (${config.pointAttractorStrength})` : ''}
           {config.collisionEnabled ? ` • Floor Bounce (${config.bounciness ?? 0.45})` : ''}
         </span>
-        <span>Drag to Orbit Camera</span>
+        <span className="shrink-0 text-zinc-500">Drag to Orbit</span>
       </div>
     </div>
   );

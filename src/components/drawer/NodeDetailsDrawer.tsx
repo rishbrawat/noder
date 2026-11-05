@@ -25,6 +25,7 @@ interface NodeDetailsDrawerProps {
   onStraighten: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  offsetRight?: string;
 }
 
 const getPinTypeBadgeColor = (pinType: PinType): string => {
@@ -57,6 +58,7 @@ export const NodeDetailsDrawer: React.FC<NodeDetailsDrawerProps> = ({
   onStraighten,
   onDuplicate,
   onDelete,
+  offsetRight = 'right-0',
 }) => {
   const updateNodeData = useBlueprintStore(state => state.updateNodeData);
   const blueprintName = useBlueprintStore(state => state.blueprintName);
@@ -100,7 +102,7 @@ export const NodeDetailsDrawer: React.FC<NodeDetailsDrawerProps> = ({
 
   return (
     <aside
-      className={`fixed top-12 right-0 bottom-8 z-20 flex transition-all duration-200 select-none ${
+      className={`fixed top-12 ${offsetRight} bottom-8 z-20 flex transition-all duration-200 select-none ${
         isOpen ? 'w-80' : 'w-0'
       }`}
       aria-label="Node Details Panel"
