@@ -47,6 +47,7 @@ export interface PinData {
   valueType?: PinType;
   description?: string;
   value?: any;
+  defaultValue?: any;
 }
 
 export interface NodeData {
@@ -124,7 +125,14 @@ export interface UEPinDefinition {
   direction: 'EGPD_Input' | 'EGPD_Output';
 }
 
-export type UEGraphType = 'EventGraph' | 'ConstructionScript' | 'Function';
+export type UEGraphType = 
+  | 'EventGraph' 
+  | 'ConstructionScript' 
+  | 'Construction'
+  | 'Function'
+  | 'ShadersUE'
+  | 'NiagaraVFX'
+  | 'GASStudio';
 
 export interface BlueprintSubGraph {
   id: string;

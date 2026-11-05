@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { STANDARD_UE_NODES, StandardUENodePreset } from '../data/standardUENodes';
+import { StandardUENodePreset } from '../data/standardUENodes';
+import { useBlueprintStore } from '../store/blueprintStore';
+import { getNodePresetsForGraph } from './NodeLibraryDrawer';
 import { LuSearch, LuZap, LuGitFork, LuActivity, LuTerminal, LuLayers, LuMessageSquare, LuSparkles } from 'react-icons/lu';
 
 export interface OriginPinContext {
@@ -27,6 +29,7 @@ export const UnrealContextMenu: React.FC<UnrealContextMenuProps> = ({
   onSelectNode,
   onAddComment,
 }) => {
+  const activeGraphType = useBlueprintStore(state => state.activeGraphType);
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isContextSensitive, setIsContextSensitive] = useState(Boolean(originPin));
@@ -51,7 +54,7 @@ export const UnrealContextMenu: React.FC<UnrealContextMenuProps> = ({
 
   // Filter presets based on search query and optional Context Sensitivity
   const filteredNodes = useMemo(() => {
-    let pool = STANDARD_UE_NODES;
+    let pool = getNodePresetsForGraph(activeGraphType);
 
     if (isContextSensitive && originPin) {
       pool = pool.filter(node => {
@@ -77,7 +80,7 @@ export const UnrealContextMenu: React.FC<UnrealContextMenuProps> = ({
         n.subtitle.toLowerCase().includes(query) ||
         n.category.toLowerCase().includes(query)
     );
-  }, [search, isContextSensitive, originPin]);
+  }, [activeGraphType, search, isContextSensitive, originPin]);
 
   const MAX_DISPLAY_NODES = 60;
 

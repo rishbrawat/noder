@@ -1,63 +1,104 @@
-# Project: Noder — Phase 2 Architectural Implementation
+# Project: Tri-Engine Expansion (ShadersUE, Niagara VFX Studio, GAS Studio)
 
 ## Architecture
-Noder is a web-based Unreal Engine 5 Blueprint visual IDE and AI generation studio built on React 18, React Flow, TypeScript, Tailwind CSS, Vite, and a Python Flask backend (`api/index.py`) integrated with the Google GenAI SDK.
-
-### System Subsystems & Boundaries
-1. **UE5 Compiler & Type Subsystem** (`src/types/`, `src/utils/`):
-   - Type definitions (`BlueprintTypes.ts`), container types (`TArray`, `TSet`, `TMap`), and wildcard resolution.
-   - Bidirectional T3D compiler and parser (`ueT3DCompiler.ts`, `ueT3DParser.ts`).
-   - Python automation bridge (`uePythonGenerator.ts`, `unreal/NoderBridge.py`).
-2. **Frontend Canvas & Viewport Subsystem** (`src/components/`):
-   - Orchestrator (`BlueprintEditor.tsx`), modularized into:
-     - `SimulationController` (`src/components/controllers/SimulationController.ts`): Tracing, stepping, breakpoints, speed, audio.
-     - `ShortcutController` (`src/components/controllers/ShortcutController.tsx`): Hotkeys, click-spawning, clipboard, focus trapping.
-     - `CanvasViewport` (`src/components/canvas/CanvasViewport.tsx`): ReactFlow canvas, LOD grid, HUD, minimap, controls, NLPInput.
-   - 120fps hardware-accelerated rendering pipeline and isolated node subscriptions.
-3. **AI Generation Engine & Evaluation Subsystem** (`api/`, `src/services/`, `src/benchmark/`):
-   - Multi-tier model cascade with quota circuit breaker (Templates -> Flash -> Pro -> Flash-Lite).
-   - Multi-tier persistent cache (Redis -> SQLite -> In-Memory LRU).
-   - Automated 50-Prompt LLM Evaluation Benchmark Suite across 5 gameplay domains with >=90% scoring threshold.
-4. **Adversarial QA & Verification Gate**:
-   - Zero-regression test suite (all 42 baseline tests + 71 new unit/integration/stress tests = 113 tests passing).
-   - Strict TypeScript (`tsc -b`) and ESLint (0 warnings).
-
----
+Noder is an Unreal Engine 5 visual node graph editor built in React, TypeScript, and Three.js.
+The Tri-Engine Expansion adds three dedicated studios alongside the existing `EventGraph` and `ConstructionScript`:
+1. **ShadersUE**: Pure mathematical dataflow Material Expression graph with live 3D Shader Ball WebGL preview, GLSL generation, and UE5 `MaterialExpression` T3D clipboard compiler.
+2. **NiagaraVFX**: Particle Flow Studio with sequential stage pipeline, live GPU particle simulation engine (up to 10k particles at 60 FPS in WebGL dynamic buffers), and UE5 Niagara System/Emitter T3D clipboard compiler.
+3. **GASStudio**: Gameplay Ability System studio with ability task definitions, GameplayEffect modifiers/durations, AttributeSet clamping math, Visual Gameplay Tag Policy Matrix, and paired C++ (`.h`/`.cpp`) and Blueprint T3D scaffolding compilers.
+4. **Additive Modular UI Integration**: Non-breaking graph mode switcher in `BlueprintToolbar.tsx`, dynamic node catalog swapping in `NodeLibraryDrawer.tsx` and `UnrealContextMenu.tsx`, multi-graph state isolation in `blueprintStore.ts`, and collision-free auxiliary preview dock mounting in `BlueprintEditor.tsx`.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Container Types Expansion | Add `TArray`, `TSet`, `TMap` to `BlueprintTypes.ts`, `PinContainerType`, `innerType`, `valueType` | M1 | Survey |
-| 2 | Container Normalization Helper | Implement `normalizeContainerType` helper for robust container detection | M1 | Survey |
-| 3 | Wildcard Pin Resolution Engine | Equivalence groups, bidirectional type deduction, transitive propagation, reset on disconnect | M1 | Survey |
-| 4 | Container T3D Serialization | Output `ContainerType=Array/Set/Map`, `PinValueType`, route to `KismetArrayLibrary`/`KismetSetLibrary`/`KismetMapLibrary` | M1 | Survey |
-| 5 | Container T3D Parser | Parse `ContainerType`, `bIsArray`, `bIsSet`, `bIsMap`, and `PinValueType` in `ueT3DParser.ts` | M1 | Survey |
-| 6 | Python Automation Bridge | Add `/execute` endpoint to `NoderBridge.py`, auto-clipboard push and asset launch in `uePythonGenerator.ts` | M1 | Survey |
-| 7 | Canvas Connection Rules Matrix | Implement `isValidConnection` for container matching and hashable key restrictions | M1 | Survey |
-| 8 | Cursor Tracking Re-render Fix | Migrate `lastMousePos` from `useState` to `useRef`, eliminating 120+ unneeded re-renders/sec | M2 | Survey |
-| 9 | Node Edge Subscription Isolation | Remove global `edges` subscription in `BlueprintNode.tsx` to stop canvas-wide invalidations | M2 | Survey |
-| 10 | SimulationController Extraction | Encapsulate simulation execution, stepping, breakpoints (F9/F5/F10), audio in dedicated controller | M2 | Survey |
-| 11 | ShortcutController Extraction | Encapsulate hotkeys, held click-spawn keys (B, S, D, P), clipboard paste, focus trapping | M2 | Survey |
-| 12 | CanvasViewport Extraction | Encapsulate ReactFlow wrapper, LOD grid, HUD, minimap, controls, NLPInput, wire drag-drop | M2 | Survey |
-| 13 | BlueprintEditor Monolith Reduction | Reduce `BlueprintEditor.tsx` from 1,605 lines to <280 lines clean orchestrator | M2 | Survey |
-| 14 | 120fps GPU Layer Acceleration | Add `will-change: transform`, `transform: translateZ(0)`, and `contain: layout style paint` | M2 | Survey |
-| 15 | Canonical Templates Activation | Wire `match_canonical_template()` in `api/index.py` for <2ms, 0-token instant generation | M3 | Survey |
-| 16 | Intelligent Model Cascade | Implement 4-tier cascade: Tier 0 (Templates) -> Tier 1 (Flash) -> Tier 2 (Pro) -> Tier 3 (Lite) | M3 | Survey |
-| 17 | Quota Circuit Breaker | Implement key and model quarantine on 429 RESOURCE_EXHAUSTED errors | M3 | Survey |
-| 18 | Persistent SQLite Cache Backend | Add thread-safe SQLite disk persistence with SHA256 indexing and TTL cleanup | M3 | Survey |
-| 19 | SSE Streaming Endpoint | Add `/api/generateBlueprintStream` with real-time reasoning chunk streaming | M3 | Survey |
-| 20 | 50-Prompt Benchmark Suite | Build automated evaluation harness across 5 domains with 5-dimension scoring rubric (>=90%) | M3 | Survey |
-| 21 | Vitest Baseline Preservation | Maintain 100% pass on all 42 baseline tests + new tests (113 tests total) | M4 | Survey |
-| 22 | Strict TypeScript Quality | Zero errors on `tsc -b` | M4 | Survey |
-| 23 | Strict ESLint Quality | Zero warnings and zero errors on `eslint src --max-warnings 0` | M4 | Survey |
-| 24 | Adversarial QA & Forensic Integrity | Independent verification against facades, mocks, and edge case stress tests | M4 | Survey |
-
----
+| 1 | Baseline Type & Icon Harmonization | Fix `PinData.defaultValue?: any;` and `react-icons/lu` exports | M1 | Survey |
+| 2 | Material Expression Node Catalog | Pure mathematical dataflow nodes (Constants, Math, Vectors, UVs, VFX) | M2 | sprint_5_nov.md §2.2 |
+| 3 | 3D Live Shader Ball Viewport | Three.js WebGL viewport with PBR Shader Ball, orbit controls, lighting | M2 | sprint_5_nov.md §2.3 |
+| 4 | GLSL Fragment Shader Generator | Real-time DAG traversal evaluating PBR properties into GLSL / Three.js | M2 | sprint_5_nov.md §2.2 |
+| 5 | MaterialExpression T3D Compiler | UE5.4/5.5 clipboard ASCII serialization for Material Expressions | M2 | sprint_5_nov.md §2.4 |
+| 6 | Niagara Stage Module Pipeline | Sequential stages (System/Emitter/Particle Spawn & Update, Forces, Renderers) | M3 | sprint_5_nov.md §3.2 |
+| 7 | WebGL GPU Particle Sim Engine | 10k particle simulation with Euler integration, curl noise, floor bounce | M3 | sprint_5_nov.md §3.3 |
+| 8 | Emitter Stage Stack UI Dock | Dedicated stage stack inspector with live parameter controls | M3 | sprint_5_nov.md §3.2 |
+| 9 | Niagara System/Emitter T3D Compiler | UE5 Niagara Emitter clipboard ASCII serialization | M3 | sprint_5_nov.md §3.4 |
+| 10 | Gameplay Ability Definitions & Tasks | Ability instancing, net execution, and async task nodes (PlayMontage) | M4 | sprint_5_nov.md §4.2 |
+| 11 | Gameplay Effect Modifiers & Durations | Add/Multiply/Override modifiers and Instant/Infinite/HasDuration policies | M4 | sprint_5_nov.md §4.2 |
+| 12 | Visual Gameplay Tag Policy Matrix | Required, Blocked, and Granted tag containers with conflict checking | M4 | sprint_5_nov.md §4.2 |
+| 13 | AttributeSet Clamping & C++ Scaffolding | Paired `.h`/`.cpp` scaffolding with ATTRIBUTE_ACCESSORS and PreAttributeChange | M4 | sprint_5_nov.md §4.3 |
+| 14 | GAS Blueprint T3D Execution Graph | K2 execution graph with ActivateAbility, CommitAbility, PlayMontage, EndAbility | M4 | sprint_5_nov.md §4.3 |
+| 15 | Graph Mode Switcher UI & Dynamic Catalogs | 5-mode top-bar switching, dynamic node library and context menu filtering | M5 | sprint_5_nov.md §5.1 |
+| 16 | Collision-Free Auxiliary Dock Mounting | Mounting Shader, Niagara, and GAS preview docks in BlueprintEditor.tsx | M5 | sprint_5_nov.md §5.2 |
+| 17 | Multi-Graph Store Isolation | Namespaced node/edge graphs in Zustand store with per-mode history | M5 | sprint_5_nov.md §5.1 |
+| 18 | Context-Aware Linter & One-Click Copy | Validator rules for pure dataflow, top-bar one-click UE5 copy routing | M5 | sprint_5_nov.md §5.3 |
+| 19 | E2E & Unit Test Expansion (180+ Tests) | Expansion from 124 to 180+ passing tests across all modules | M6 / Test Track | DoD / Acceptance |
+| 20 | Git Synchronization & Push | Clean commit log and sync with remote master on rishbrawat/noder | M6 | Acceptance |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | UE5 Type System & Compiler Enhancements | Container types (`TArray`, `TSet`, `TMap`), wildcard resolution engine, T3D generator/parser, Python bridge, connection validator | none | DONE |
-| 2 | Frontend Canvas Modularization (120fps) | Decompose `BlueprintEditor.tsx` into `SimulationController`, `ShortcutController`, `CanvasViewport`, fix mousemove re-renders, isolate node edge subscriptions, GPU acceleration | M1 | IN_PROGRESS |
-| 3 | AI Pipeline Optimization & Benchmark Suite | Canonical template activation, 4-tier model cascade, quota circuit breaker, SQLite cache, SSE streaming, automated 50-Prompt Benchmark Suite | M1 | PLANNED |
-| 4 | Final Milestone E2E & Adversarial QA Gatekeeping | Full vitest run (42 baseline + new tests), strict typecheck, strict lint, edge case stress testing, forensic audit | M1, M2, M3 | PLANNED |
+| M1 | Baseline Harmonization | Fix PinData type, icon imports, preview hook dependencies | None | PLANNED |
+| M2 | ShadersUE Implementation | Material nodes catalog, Shader Ball viewport, GLSL generator, T3D compiler | M1 | PLANNED |
+| M3 | Niagara VFX Implementation | Stage stack, particle simulation engine, viewport, T3D compiler | M1 | PLANNED |
+| M4 | GAS Studio Implementation | Ability/Effect/Attribute types, Tag Matrix, C++ scaffolding, T3D compiler | M1 | PLANNED |
+| M5 | Modular UI Integration | BlueprintEditor auxiliary dock mounting, dynamic catalog, mode copy routing | M2, M3, M4 | PLANNED |
+| M6 | Final Acceptance & Hardening | 100% tests pass (180+ tests), typecheck 0 errors, lint 0 errors, git sync | M5 | PLANNED |
+
+## Interface Contracts
+### `PinData` Contract (`src/types/BlueprintTypes.ts`)
+```typescript
+export interface PinData {
+  id: string;
+  name: string;
+  type: PinType;
+  direction: PinDirection;
+  isArray?: boolean;
+  isMap?: boolean;
+  isSet?: boolean;
+  value?: any;
+  defaultValue?: any; // Required for Shaders, Niagara, and GAS parameter defaults
+  // ... other optional fields
+}
+```
+
+### Multi-Graph Store Contract (`src/store/blueprintStore.ts`)
+```typescript
+interface BlueprintState {
+  activeGraphType: 'EventGraph' | 'ConstructionScript' | 'Construction' | 'Function' | 'ShadersUE' | 'NiagaraVFX' | 'GASStudio';
+  subGraphs: Record<string, { nodes: Node[]; edges: Edge[] }>;
+  switchGraph: (targetType: GraphType) => void;
+}
+```
+
+### Clipboard Export Contract (`src/components/toolbar/BlueprintToolbar.tsx`)
+```typescript
+interface BlueprintToolbarProps {
+  onCopyUE5?: () => void;
+  // Based on activeGraphType, routes to:
+  // - EventGraph / Construction: compileNodesToUE_T3D
+  // - ShadersUE: compileMaterialGraphToUE_T3D
+  // - NiagaraVFX: compileNiagaraEmitterToUE_T3D
+  // - GASStudio: compileGasToUE_T3D / copyCpp
+}
+```
+
+## Code Layout
+- `src/features/shaders/`:
+  - `components/`: `ShaderPreviewViewport.tsx`, `ShaderPresetsToolbar.tsx`, `MaterialNodeCard.tsx`
+  - `utils/`: `materialNodesCatalog.ts`, `ueMaterialT3DCompiler.ts`, `webglShaderGenerator.ts`
+  - `types/`: `materialTypes.ts`
+  - `__tests__/`: Unit test suites for material compilation and GLSL evaluation
+- `src/features/niagara/`:
+  - `components/`: `NiagaraPreviewViewport.tsx`, `EmitterStageStack.tsx`
+  - `utils/`: `niagaraModulesCatalog.ts`, `ueNiagaraT3DCompiler.ts`, `particleSimulationEngine.ts`
+  - `types/`: `niagaraTypes.ts`
+  - `__tests__/`: Unit test suites for particle simulation and Niagara T3D compiler
+- `src/features/gas/`:
+  - `components/`: `GameplayTagMatrix.tsx`, `GameplayEffectDrawer.tsx`, `AttributeSetInspector.tsx`
+  - `utils/`: `gasCatalog.ts`, `gasCppGenerator.ts`, `gasT3DCompiler.ts`
+  - `types/`: `gasTypes.ts`
+  - `__tests__/`: Unit test suites for C++ generation, GAS T3D compilation, and Tag Matrix
+- `src/components/`:
+  - `BlueprintEditor.tsx`: Main studio layout housing canvas and conditionally docked auxiliary viewports
+  - `toolbar/BlueprintToolbar.tsx`: Top bar containing 5-mode graph switcher and mode-aware UE5 copy
+  - `drawer/NodeLibraryDrawer.tsx` & `UnrealContextMenu.tsx`: Dynamic node catalog providers
+- `src/utils/`:
+  - `blueprintValidator.ts`: Mode-aware graph validation rules

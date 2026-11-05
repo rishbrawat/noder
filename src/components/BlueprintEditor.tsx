@@ -15,7 +15,7 @@ import { NodeDetailsDrawer } from './drawer/NodeDetailsDrawer';
 import { OutputLogConsole } from './OutputLogConsole';
 import { UnrealContextMenu, OriginPinContext } from './UnrealContextMenu';
 import { MyBlueprintDrawer } from './MyBlueprintDrawer';
-import { NodeLibraryDrawer } from './NodeLibraryDrawer';
+import { NodeLibraryDrawer, getNodePresetsForGraph } from './NodeLibraryDrawer';
 import { EditorModals } from './modals/EditorModals';
 import { CanvasViewport } from './canvas/CanvasViewport';
 import { ShortcutController, copyGraphToUE5Clipboard, importGraphFromUE5Clipboard } from './controllers/ShortcutController';
@@ -30,6 +30,27 @@ import { BlueprintGenerationService } from '../services/blueprintGenerationServi
 import { StandardUENodePreset, STANDARD_UE_NODES } from '../data/standardUENodes';
 import { BlueprintNode as IBlueprintNode } from '../types/BlueprintTypes';
 
+// Tri-Engine Expansion Modules
+import { ShaderPreviewViewport } from '../features/shaders/components/ShaderPreviewViewport';
+import { ShaderPresetsToolbar } from '../features/shaders/components/ShaderPresetsToolbar';
+import { evaluateMaterialGraph } from '../features/shaders/utils/webglShaderGenerator';
+import { compileMaterialToT3D } from '../features/shaders/utils/ueMaterialT3DCompiler';
+import { ShaderPreset } from '../features/shaders/types/materialTypes';
+
+import { NiagaraPreviewViewport } from '../features/niagara/components/NiagaraPreviewViewport';
+import { EmitterStageStack } from '../features/niagara/components/EmitterStageStack';
+import { DEFAULT_NIAGARA_CONFIG } from '../features/niagara/data/niagaraModulesCatalog';
+import { compileNiagaraToT3D } from '../features/niagara/utils/ueNiagaraT3DCompiler';
+import { NiagaraEmitterConfig } from '../features/niagara/types/niagaraTypes';
+
+import { GameplayTagMatrix } from '../features/gas/components/GameplayTagMatrix';
+import { GameplayEffectDrawer } from '../features/gas/components/GameplayEffectDrawer';
+import { AttributeSetInspector } from '../features/gas/components/AttributeSetInspector';
+import { PRESET_ABILITY_DODGE, PRESET_GAMEPLAY_EFFECTS } from '../features/gas/data/gasCatalog';
+import { compileGameplayAbilityToT3D } from '../features/gas/utils/gasT3DCompiler';
+import { generateGameplayAbilityCpp } from '../features/gas/utils/gasCppGenerator';
+import { GameplayAbilityDefinition } from '../features/gas/types/gasTypes';
+
 export const BlueprintEditor: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -42,6 +63,14 @@ export const BlueprintEditor: React.FC = () => {
   const [contextMenuOriginPin, setContextMenuOriginPin] = useState<OriginPinContext | null>(null);
   const [modals, setModals] = useState<Record<string, boolean>>({});
   const setModal = (k: string, v: boolean) => setModals(m => ({ ...m, [k]: v }));
+
+  // Tri-Engine Expansion Local States
+  const [niagaraConfig, setNiagaraConfig] = useState<NiagaraEmitterConfig>(DEFAULT_NIAGARA_CONFIG);
+  const [gasAbility, setGasAbility] = useState<GameplayAbilityDefinition>(PRESET_ABILITY_DODGE);
+  const [isShaderCopied, setIsShaderCopied] = useState<boolean>(false);
+  const [isNiagaraCopied, setIsNiagaraCopied] = useState<boolean>(false);
+  const [isGasCopied, setIsGasCopied] = useState<boolean>(false);
+  const [activeGasTab, setActiveGasTab] = useState<'tags' | 'effects' | 'attributes'>('tags');
 
   const {
     nodes, edges, onNodesChange, onEdgesChange, onConnect, blueprintName, isLoading,
@@ -81,6 +110,73 @@ export const BlueprintEditor: React.FC = () => {
   const savedSnapshots = useMemo(() => {
     try { const raw = localStorage.getItem(`noder_snapshots_${(blueprintName || 'MainGraph').replace(/\s+/g, '_')}`); return raw ? JSON.parse(raw) : []; } catch { return []; }
   }, [blueprintName]);
+
+  const materialProperties = useMemo(() => {
+    return evaluateMaterialGraph(nodes, edges);
+  }, [nodes, edges]);
+
+  const handleSelectShaderPreset = useCallback((preset: ShaderPreset) => {
+    pushHistory(`Apply Preset: ${preset.name}`);
+    const rootNode = nodes.find(n => n.data.title === 'Material Root' || n.id.includes('root'));
+    if (rootNode) {
+      const updatedInputs = (rootNode.data.inputs || []).map(inp => {
+        if (inp.name === 'BaseColor' && preset.properties.baseColor) return { ...inp, defaultValue: preset.properties.baseColor };
+        if (inp.name === 'Metallic' && preset.properties.metallic !== undefined) return { ...inp, defaultValue: preset.properties.metallic };
+        if (inp.name === 'Roughness' && preset.properties.roughness !== undefined) return { ...inp, defaultValue: preset.properties.roughness };
+        if (inp.name === 'Specular' && preset.properties.specular !== undefined) return { ...inp, defaultValue: preset.properties.specular };
+        if (inp.name === 'EmissiveColor' && preset.properties.emissiveColor) return { ...inp, defaultValue: preset.properties.emissiveColor };
+        if (inp.name === 'Opacity' && preset.properties.opacity !== undefined) return { ...inp, defaultValue: preset.properties.opacity };
+        return inp;
+      });
+      setNodes(nodes.map(n => n.id === rootNode.id ? { ...n, data: { ...n.data, inputs: updatedInputs } } : n));
+    }
+    toast.success(`Applied shader preset: ${preset.name}`);
+  }, [nodes, setNodes, pushHistory]);
+
+  const handleCopyMaterialUE5 = useCallback(() => {
+    const result = compileMaterialToT3D(nodes, edges);
+    navigator.clipboard.writeText(result.t3dText);
+    setIsShaderCopied(true);
+    setTimeout(() => setIsShaderCopied(false), 2000);
+    addLog({ type: 'info', message: `LogMaterial: Copied ${nodes.length} Material Expressions to UE5 clipboard buffer.` });
+    toast.success('Copied UE5 Material Graph to clipboard!');
+  }, [nodes, edges, addLog]);
+
+  const handleCopyNiagaraUE5 = useCallback(() => {
+    const result = compileNiagaraToT3D(niagaraConfig);
+    navigator.clipboard.writeText(result.t3dText);
+    setIsNiagaraCopied(true);
+    setTimeout(() => setIsNiagaraCopied(false), 2000);
+    addLog({ type: 'info', message: `LogNiagara: Copied Niagara Emitter "${result.emitterName}" to UE5 clipboard.` });
+    toast.success('Copied UE5 Niagara Emitter to clipboard!');
+  }, [niagaraConfig, addLog]);
+
+  const handleCopyGasT3D = useCallback(() => {
+    const result = compileGameplayAbilityToT3D(gasAbility);
+    navigator.clipboard.writeText(result.t3dText);
+    setIsGasCopied(true);
+    setTimeout(() => setIsGasCopied(false), 2000);
+    addLog({ type: 'info', message: `LogGAS: Copied GameplayAbility "${gasAbility.abilityName}" Blueprint T3D to clipboard.` });
+    toast.success('Copied UE5 Gameplay Ability to clipboard!');
+  }, [gasAbility, addLog]);
+
+  const handleCopyGasAbilityCpp = useCallback(() => {
+    const result = generateGameplayAbilityCpp(gasAbility);
+    navigator.clipboard.writeText(`${result.headerFile}\n\n// ================= Source (.cpp) =================\n\n${result.sourceFile}`);
+    toast.success('Copied C++ GameplayAbility (.h + .cpp) to clipboard!');
+  }, [gasAbility]);
+
+  const handleCopyUE5 = useCallback(() => {
+    if (activeGraphType === 'ShadersUE') {
+      handleCopyMaterialUE5();
+    } else if (activeGraphType === 'NiagaraVFX') {
+      handleCopyNiagaraUE5();
+    } else if (activeGraphType === 'GASStudio') {
+      handleCopyGasT3D();
+    } else {
+      copyGraphToUE5Clipboard(nodes, edges, addLog);
+    }
+  }, [activeGraphType, handleCopyMaterialUE5, handleCopyNiagaraUE5, handleCopyGasT3D, nodes, edges, addLog]);
 
   const handleToggleHeatmap = useCallback(() => {
     const next = !panelState.isHeatmapActive;
@@ -166,12 +262,13 @@ export const BlueprintEditor: React.FC = () => {
   }, [nodes, edges, setNodes, setEdges, pushHistory]);
 
   const handleSpawnAtPosition = useCallback((presetId: string, clientX?: number, clientY?: number) => {
-    const preset = STANDARD_UE_NODES.find(p => p.id === presetId);
+    const pool = getNodePresetsForGraph(activeGraphType);
+    const preset = pool.find(p => p.id === presetId) || STANDARD_UE_NODES.find(p => p.id === presetId);
     if (!preset) return;
     const x = clientX !== undefined ? clientX - 100 : lastMousePosRef.current.x, y = clientY !== undefined ? clientY - 40 : lastMousePosRef.current.y;
     setNodes([...nodes, { id: uuidv4(), type: 'customNode', position: { x: Math.max(50, x), y: Math.max(50, y) }, data: { title: preset.title, subtitle: preset.subtitle, nodeType: preset.nodeType, color: preset.color, inputs: preset.inputs.map(i => ({ ...i })), outputs: preset.outputs.map(o => ({ ...o })) } }]);
     toast.success(`Spawned "${preset.title}"`);
-  }, [nodes, setNodes]);
+  }, [nodes, setNodes, activeGraphType]);
 
   const handleAddNodeFromLibrary = useCallback((preset: StandardUENodePreset, spawnPos?: { x: number; y: number }, originPin?: OriginPinContext | null) => {
     const newId = uuidv4();
@@ -240,7 +337,7 @@ export const BlueprintEditor: React.FC = () => {
           onOpenRemoteBridge={() => setModal('remoteBridge', true)} onOpenRefactor={() => setModal('refactor', true)}
           onCollapseToMacro={handleCollapseToMacro} onOpenDiff={() => setModal('diff', true)}
           onImportUE5={() => importGraphFromUE5Clipboard(setNodes, setEdges, pushHistory, addLog)}
-          onExportJSON={handleExport} onCopyUE5={() => copyGraphToUE5Clipboard(nodes, edges, addLog)} snapToGrid={panelState.snapToGrid}
+          onExportJSON={handleExport} onCopyUE5={handleCopyUE5} snapToGrid={panelState.snapToGrid}
           onToggleSnapToGrid={() => { const next = !panelState.snapToGrid; setPanelState(s => ({ ...s, snapToGrid: next })); toast(next ? 'Snap to Grid (16px) Enabled' : 'Snap to Grid Disabled', { icon: '📐' }); }}
           canUndo={canUndo} canRedo={canRedo} onUndo={() => { undo(); blueprintAudio.playStepPulse(); toast('Undo (Ctrl+Z)', { icon: '↩️', duration: 1200 }); }}
           onRedo={() => { redo(); blueprintAudio.playStepPulse(); toast('Redo (Ctrl+Y)', { icon: '↪️', duration: 1200 }); }}
@@ -250,20 +347,123 @@ export const BlueprintEditor: React.FC = () => {
           onClearCanvas={() => { if (window.confirm('Clear all nodes and wires from canvas?')) { clearBlueprint(); toast.success('Canvas cleared'); } }} onOpenBYOK={() => setModal('byok', true)}
           theme={theme} onToggleTheme={toggleTheme} isDetailsOpen={panelState.isDetailsOpen} onToggleDetails={() => setPanelState(s => ({ ...s, isDetailsOpen: !s.isDetailsOpen }))}
         />
-        <CanvasViewport
-          nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} theme={theme}
-          snapToGrid={panelState.snapToGrid} showMiniMap={panelState.showMiniMap} isOutputLogExpanded={panelState.isOutputLogExpanded} isLoading={isLoading}
-          selectedNodes={selectedNodesList} reactFlowInstanceRef={reactFlowInstanceRef} heldKeyRef={heldKeyRef} onQuickSpawn={handleSpawnAtPosition}
-          onNodeDragStart={() => pushHistory('Move Node')}
-          onNodeClick={(e, node) => { if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setSelectedNodes([node]); }}
-          onNodeDoubleClick={(_, node) => { if (node.data?.subGraphId) { const sub = useBlueprintStore.getState().subGraphs[node.data.subGraphId]; if (sub) { setActiveSubGraphName(node.data.title); setNodes(sub.nodes); setEdges(sub.edges); toast(`Drilled down into ${node.data.title}`); } } }}
-          onEdgeClick={(_, edge) => setSelectedEdges([edge])}
-          onContextMenuRequest={(pos, origin) => { setContextMenuOriginPin(origin || null); setContextMenuPos(pos); }}
-          onAlignHorizontal={() => handleAlign('y')} onAlignVertical={() => handleAlign('x')} onStraighten={handleStraightenConnections}
-          onCollapseToMacro={handleCollapseToMacro} onWrapComment={handleAddComment} onDuplicate={handleDuplicateSelected} onDelete={handleDeleteSelected}
-          onGenerationComplete={() => { setIsLoading(false); setTimeout(() => reactFlowInstanceRef.current?.fitView({ padding: 0.25, duration: 800 }), 100); }}
-          onCancelGeneration={cancelGeneration}
-        />
+        {activeGraphType === 'ShadersUE' && (
+          <ShaderPresetsToolbar
+            onSelectPreset={handleSelectShaderPreset}
+            onCopyUE5={handleCopyMaterialUE5}
+            isCopied={isShaderCopied}
+          />
+        )}
+        <div className="flex-1 flex relative overflow-hidden">
+          {activeGraphType === 'NiagaraVFX' && (
+            <div className="w-80 h-full flex flex-col shrink-0 z-10 border-r border-zinc-800 bg-zinc-900 overflow-hidden">
+              <EmitterStageStack
+                config={niagaraConfig}
+                onChangeConfig={(patch) => setNiagaraConfig(prev => ({ ...prev, ...patch }))}
+                onCopyUE5={handleCopyNiagaraUE5}
+                isCopied={isNiagaraCopied}
+              />
+            </div>
+          )}
+          <div className="flex-1 h-full relative overflow-hidden">
+            <CanvasViewport
+              nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} theme={theme}
+              snapToGrid={panelState.snapToGrid} showMiniMap={panelState.showMiniMap} isOutputLogExpanded={panelState.isOutputLogExpanded} isLoading={isLoading}
+              selectedNodes={selectedNodesList} reactFlowInstanceRef={reactFlowInstanceRef} heldKeyRef={heldKeyRef} onQuickSpawn={handleSpawnAtPosition}
+              onNodeDragStart={() => pushHistory('Move Node')}
+              onNodeClick={(e, node) => { if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setSelectedNodes([node]); }}
+              onNodeDoubleClick={(_, node) => { if (node.data?.subGraphId) { const sub = useBlueprintStore.getState().subGraphs[node.data.subGraphId]; if (sub) { setActiveSubGraphName(node.data.title); setNodes(sub.nodes); setEdges(sub.edges); toast(`Drilled down into ${node.data.title}`); } } }}
+              onEdgeClick={(_, edge) => setSelectedEdges([edge])}
+              onContextMenuRequest={(pos, origin) => { setContextMenuOriginPin(origin || null); setContextMenuPos(pos); }}
+              onAlignHorizontal={() => handleAlign('y')} onAlignVertical={() => handleAlign('x')} onStraighten={handleStraightenConnections}
+              onCollapseToMacro={handleCollapseToMacro} onWrapComment={handleAddComment} onDuplicate={handleDuplicateSelected} onDelete={handleDeleteSelected}
+              onGenerationComplete={() => { setIsLoading(false); setTimeout(() => reactFlowInstanceRef.current?.fitView({ padding: 0.25, duration: 800 }), 100); }}
+              onCancelGeneration={cancelGeneration}
+            />
+          </div>
+          {activeGraphType === 'ShadersUE' && (
+            <div className="w-96 h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">
+              <ShaderPreviewViewport materialProperties={materialProperties} className="h-full" />
+            </div>
+          )}
+          {activeGraphType === 'NiagaraVFX' && (
+            <div className="w-96 h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">
+              <NiagaraPreviewViewport config={niagaraConfig} className="h-full" />
+            </div>
+          )}
+          {activeGraphType === 'GASStudio' && (
+            <div className="w-[420px] h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0 text-xs">
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => setActiveGasTab('tags')}
+                    className={`px-2.5 py-1 rounded transition-colors font-medium cursor-pointer ${
+                      activeGasTab === 'tags'
+                        ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    }`}
+                  >
+                    Tag Matrix
+                  </button>
+                  <button
+                    onClick={() => setActiveGasTab('effects')}
+                    className={`px-2.5 py-1 rounded transition-colors font-medium cursor-pointer ${
+                      activeGasTab === 'effects'
+                        ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    }`}
+                  >
+                    Effects
+                  </button>
+                  <button
+                    onClick={() => setActiveGasTab('attributes')}
+                    className={`px-2.5 py-1 rounded transition-colors font-medium cursor-pointer ${
+                      activeGasTab === 'attributes'
+                        ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    }`}
+                  >
+                    Attributes
+                  </button>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    onClick={handleCopyGasT3D}
+                    className="flex items-center space-x-1 px-2 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px] font-mono transition-colors cursor-pointer"
+                    title="Copy UE5 GameplayAbility T3D Graph"
+                  >
+                    {isGasCopied ? 'Copied!' : 'Copy T3D'}
+                  </button>
+                  <button
+                    onClick={handleCopyGasAbilityCpp}
+                    className="flex items-center space-x-1 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-[11px] font-mono transition-colors cursor-pointer"
+                    title="Copy GameplayAbility C++ (.h + .cpp)"
+                  >
+                    C++
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {activeGasTab === 'tags' && (
+                  <GameplayTagMatrix
+                    policy={gasAbility.tagPolicy}
+                    onChangePolicy={(newPolicy) => setGasAbility(a => ({ ...a, tagPolicy: newPolicy }))}
+                  />
+                )}
+                {activeGasTab === 'effects' && (
+                  <GameplayEffectDrawer
+                    effect={gasAbility.costEffect || PRESET_GAMEPLAY_EFFECTS[0]}
+                    onChangeEffect={(newEffect) => setGasAbility(a => ({ ...a, costEffect: newEffect }))}
+                    onSelectPreset={(preset) => setGasAbility(a => ({ ...a, costEffect: preset }))}
+                  />
+                )}
+                {activeGasTab === 'attributes' && (
+                  <AttributeSetInspector className="h-full border-0 shadow-none rounded-none" />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         <NodeDetailsDrawer selectedNodes={selectedNodesList} edges={edges} isOpen={panelState.isDetailsOpen} onToggle={() => setPanelState(s => ({ ...s, isDetailsOpen: !s.isDetailsOpen }))} onWrapComment={handleAddComment} onStraighten={handleStraightenConnections} onDuplicate={handleDuplicateSelected} onDelete={handleDeleteSelected} />
         <OutputLogConsole logs={storeLogs} isSimulating={sim.isSimulating} isPaused={sim.isSimPaused} isAudioMuted={sim.isAudioMuted} isExpanded={panelState.isOutputLogExpanded} onToggleExpand={(exp) => setPanelState(s => ({ ...s, isOutputLogExpanded: exp }))} onToggleMute={sim.toggleAudioMute} onStartSimulation={sim.startSimulation} onStopSimulation={sim.stopSimulation} onResumeSimulation={sim.resumeSimulation} onStepForward={sim.stepForward} onClearLogs={clearLogs} />
         {contextMenuPos && (

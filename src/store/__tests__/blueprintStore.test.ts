@@ -87,5 +87,65 @@ describe('BlueprintStore Undo/Redo History Stack', () => {
     const current = useBlueprintStore.getState();
     expect(current.past.length).toBeLessThanOrEqual(50);
   });
+
+  describe('Multi-Graph Store Isolation', () => {
+    it('isolates nodes and edges per graph mode without state leakage', () => {
+      // Start in EventGraph and add an event node
+      useBlueprintStore.setState({ activeGraphType: 'EventGraph', nodes: [], edges: [], subGraphs: {} });
+      const eventNode: Node<NodeData> = {
+        id: 'event-node-1',
+        position: { x: 0, y: 0 },
+        data: { title: 'Event BeginPlay', nodeType: 'event', inputs: [], outputs: [{ name: 'Then', type: 'exec' }] },
+      };
+      useBlueprintStore.getState().addNode(eventNode);
+      expect(useBlueprintStore.getState().nodes).toHaveLength(1);
+
+      // Switch to ShadersUE
+      useBlueprintStore.getState().switchGraph('ShadersUE');
+      const shadersState = useBlueprintStore.getState();
+      expect(shadersState.activeGraphType).toBe('ShadersUE');
+      // Should have loaded default material graph with root
+      expect(shadersState.nodes.some(n => n.data.title === 'Material Root')).toBe(true);
+      expect(shadersState.nodes.some(n => n.id === 'event-node-1')).toBe(false);
+
+      // Switch to NiagaraVFX
+      useBlueprintStore.getState().switchGraph('NiagaraVFX');
+      const niagaraState = useBlueprintStore.getState();
+      expect(niagaraState.activeGraphType).toBe('NiagaraVFX');
+      expect(niagaraState.nodes.some(n => n.data.title.includes('Emitter') || n.data.title.includes('Particle'))).toBe(true);
+      expect(niagaraState.nodes.some(n => n.id === 'event-node-1')).toBe(false);
+
+      // Switch to GASStudio
+      useBlueprintStore.getState().switchGraph('GASStudio');
+      const gasState = useBlueprintStore.getState();
+      expect(gasState.activeGraphType).toBe('GASStudio');
+      expect(gasState.nodes.some(n => n.data.title.includes('Ability'))).toBe(true);
+      expect(gasState.nodes.some(n => n.id === 'event-node-1')).toBe(false);
+
+      // Switch back to EventGraph: eventNode must be preserved
+      useBlueprintStore.getState().switchGraph('EventGraph');
+      const restoredEventState = useBlueprintStore.getState();
+      expect(restoredEventState.activeGraphType).toBe('EventGraph');
+      expect(restoredEventState.nodes).toHaveLength(1);
+      expect(restoredEventState.nodes[0].id).toBe('event-node-1');
+    });
+
+    it('clears future redo stack and selections when switching graphs', () => {
+      useBlueprintStore.setState({
+        activeGraphType: 'EventGraph',
+        nodes: [{ id: 'dummy', position: { x: 0, y: 0 }, data: { title: 'D', nodeType: 'function', inputs: [], outputs: [] } }],
+        edges: [],
+        future: [{ nodes: [], edges: [] }],
+        canRedo: true,
+        selectedNodes: [{ id: 'dummy', position: { x: 0, y: 0 }, data: { title: 'D', nodeType: 'function', inputs: [], outputs: [] } }],
+      });
+
+      useBlueprintStore.getState().switchGraph('ShadersUE');
+      const switched = useBlueprintStore.getState();
+      expect(switched.future).toHaveLength(0);
+      expect(switched.canRedo).toBe(false);
+      expect(switched.selectedNodes).toHaveLength(0);
+    });
+  });
 });
 

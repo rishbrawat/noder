@@ -96,6 +96,242 @@ const createDefaultConstructionScript = (): Node<NodeData>[] => [
   },
 ];
 
+const createDefaultMaterialGraph = (): { nodes: Node<NodeData>[]; edges: Edge[] } => ({
+  nodes: [
+    {
+      id: 'mat-root-1',
+      type: 'customNode',
+      position: { x: 550, y: 150 },
+      data: {
+        title: 'Material Root',
+        subtitle: 'Master Material',
+        nodeType: 'customNode',
+        color: '#E11D48',
+        inputs: [
+          { name: 'BaseColor', type: 'vector3', defaultValue: [1.0, 0.766, 0.336] },
+          { name: 'Metallic', type: 'float', defaultValue: 1.0 },
+          { name: 'Specular', type: 'float', defaultValue: 0.8 },
+          { name: 'Roughness', type: 'float', defaultValue: 0.18 },
+          { name: 'EmissiveColor', type: 'vector3', defaultValue: [0, 0, 0] },
+          { name: 'Opacity', type: 'float', defaultValue: 1.0 },
+          { name: 'Normal', type: 'vector3' },
+          { name: 'WorldPositionOffset', type: 'vector3' }
+        ],
+        outputs: [{ name: 'Material', type: 'materialattributes' }],
+        description: 'Master PBR Material Output Pin Gateway.',
+      },
+    },
+    {
+      id: 'mat-color-1',
+      type: 'customNode',
+      position: { x: 150, y: 100 },
+      data: {
+        title: 'Constant3Vector (RGB)',
+        subtitle: 'Base Color',
+        nodeType: 'variable',
+        color: '#0284C7',
+        inputs: [],
+        outputs: [{ name: 'RGB', type: 'vector3', defaultValue: [1.0, 0.766, 0.336] }],
+        description: 'Gold base color vector.',
+      },
+    },
+    {
+      id: 'mat-roughness-1',
+      type: 'customNode',
+      position: { x: 150, y: 280 },
+      data: {
+        title: 'Constant (Scalar)',
+        subtitle: 'Roughness',
+        nodeType: 'variable',
+        color: '#0284C7',
+        inputs: [],
+        outputs: [{ name: 'Out', type: 'float', defaultValue: 0.18 }],
+        description: 'Specular micro-roughness.',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge_mat_color_root',
+      source: 'mat-color-1',
+      sourceHandle: 'vector3-rgb',
+      target: 'mat-root-1',
+      targetHandle: 'vector3-basecolor',
+      type: 'blueprintEdge',
+      data: { pinType: 'vector3' },
+    },
+    {
+      id: 'edge_mat_rough_root',
+      source: 'mat-roughness-1',
+      sourceHandle: 'float-out',
+      target: 'mat-root-1',
+      targetHandle: 'float-roughness',
+      type: 'blueprintEdge',
+      data: { pinType: 'float' },
+    },
+  ],
+});
+
+const createDefaultNiagaraGraph = (): { nodes: Node<NodeData>[]; edges: Edge[] } => ({
+  nodes: [
+    {
+      id: 'niagara-spawn-1',
+      type: 'customNode',
+      position: { x: 100, y: 120 },
+      data: {
+        title: 'Emitter Update',
+        subtitle: 'Spawn Rate: 200/s',
+        nodeType: 'event',
+        color: '#0284C7',
+        inputs: [],
+        outputs: [{ name: 'Then', type: 'exec' }],
+        description: 'Spawns particles continuously at 200/s.',
+      },
+    },
+    {
+      id: 'niagara-forces-1',
+      type: 'customNode',
+      position: { x: 420, y: 120 },
+      data: {
+        title: 'Particle Update (Forces)',
+        subtitle: 'Gravity & Turbulence',
+        nodeType: 'function',
+        color: '#D97706',
+        inputs: [{ name: 'Exec', type: 'exec' }],
+        outputs: [{ name: 'Then', type: 'exec' }],
+        description: 'Gravity -980 with Curl Noise turbulence.',
+      },
+    },
+    {
+      id: 'niagara-render-1',
+      type: 'customNode',
+      position: { x: 740, y: 120 },
+      data: {
+        title: 'Sprite Renderer',
+        subtitle: 'Additive Blending',
+        nodeType: 'function',
+        color: '#9333EA',
+        inputs: [{ name: 'Exec', type: 'exec' }],
+        outputs: [],
+        description: 'Velocity aligned camera-facing billboards.',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge_niagara_1_2',
+      source: 'niagara-spawn-1',
+      sourceHandle: 'exec-then',
+      target: 'niagara-forces-1',
+      targetHandle: 'exec-exec',
+      type: 'blueprintEdge',
+      data: { pinType: 'exec' },
+    },
+    {
+      id: 'edge_niagara_2_3',
+      source: 'niagara-forces-1',
+      sourceHandle: 'exec-then',
+      target: 'niagara-render-1',
+      targetHandle: 'exec-exec',
+      type: 'blueprintEdge',
+      data: { pinType: 'exec' },
+    },
+  ],
+});
+
+const createDefaultGASGraph = (): { nodes: Node<NodeData>[]; edges: Edge[] } => ({
+  nodes: [
+    {
+      id: 'gas-ability-1',
+      type: 'customNode',
+      position: { x: 80, y: 120 },
+      data: {
+        title: 'ActivateAbility (GA_DodgeRoll)',
+        subtitle: 'Gameplay Ability',
+        nodeType: 'event',
+        color: '#0284C7',
+        inputs: [],
+        outputs: [{ name: 'Then', type: 'exec' }],
+        description: 'Triggered when ability key is pressed and tags permit.',
+      },
+    },
+    {
+      id: 'gas-commit-1',
+      type: 'customNode',
+      position: { x: 420, y: 120 },
+      data: {
+        title: 'Commit Ability',
+        subtitle: 'Stamina -25, Cooldown 1.5s',
+        nodeType: 'function',
+        color: '#16A34A',
+        inputs: [{ name: 'Execute', type: 'exec' }],
+        outputs: [{ name: 'Then', type: 'exec' }],
+        description: 'Deducts Stamina and starts dodge cooldown tag.',
+      },
+    },
+    {
+      id: 'gas-task-1',
+      type: 'customNode',
+      position: { x: 760, y: 120 },
+      data: {
+        title: 'Play Montage And Wait',
+        subtitle: 'AM_DodgeRoll',
+        nodeType: 'function',
+        color: '#D97706',
+        inputs: [{ name: 'Execute', type: 'exec' }],
+        outputs: [
+          { name: 'OnCompleted', type: 'exec' },
+          { name: 'OnInterrupted', type: 'exec' },
+        ],
+        description: 'Plays character dodge roll root motion animation.',
+      },
+    },
+    {
+      id: 'gas-end-1',
+      type: 'customNode',
+      position: { x: 1120, y: 120 },
+      data: {
+        title: 'End Ability',
+        subtitle: 'Clean up state & granted tags',
+        nodeType: 'function',
+        color: '#E11D48',
+        inputs: [{ name: 'Execute', type: 'exec' }],
+        outputs: [],
+        description: 'Ends ability and removes State.Dodging tag.',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge_gas_1_2',
+      source: 'gas-ability-1',
+      sourceHandle: 'exec-then',
+      target: 'gas-commit-1',
+      targetHandle: 'exec-execute',
+      type: 'blueprintEdge',
+      data: { pinType: 'exec' },
+    },
+    {
+      id: 'edge_gas_2_3',
+      source: 'gas-commit-1',
+      sourceHandle: 'exec-then',
+      target: 'gas-task-1',
+      targetHandle: 'exec-execute',
+      type: 'blueprintEdge',
+      data: { pinType: 'exec' },
+    },
+    {
+      id: 'edge_gas_3_4',
+      source: 'gas-task-1',
+      sourceHandle: 'exec-oncompleted',
+      target: 'gas-end-1',
+      targetHandle: 'exec-execute',
+      type: 'blueprintEdge',
+      data: { pinType: 'exec' },
+    },
+  ],
+});
+
 // Create a store with Zustand
 export const useBlueprintStore = create<BlueprintState>((set, get) => ({
   // Initial state
@@ -229,8 +465,14 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
 
     let targetGraph = currentSubGraphs[targetType];
     if (!targetGraph) {
-      if (targetType === 'ConstructionScript') {
+      if (targetType === 'ConstructionScript' || targetType === 'Construction') {
         targetGraph = { nodes: createDefaultConstructionScript(), edges: [] };
+      } else if (targetType === 'ShadersUE') {
+        targetGraph = createDefaultMaterialGraph();
+      } else if (targetType === 'NiagaraVFX') {
+        targetGraph = createDefaultNiagaraGraph();
+      } else if (targetType === 'GASStudio') {
+        targetGraph = createDefaultGASGraph();
       } else {
         targetGraph = { nodes: [], edges: [] };
       }
@@ -244,6 +486,8 @@ export const useBlueprintStore = create<BlueprintState>((set, get) => ({
       edges: targetGraph.edges,
       selectedNodes: [],
       selectedEdges: [],
+      future: [],
+      canRedo: false,
     });
   },
   

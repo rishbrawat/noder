@@ -107,6 +107,12 @@ export function validateBlueprintGraph(
       }
     }
 
+    // In ShadersUE mode, material expression graphs are pure mathematical dataflow without exec pins.
+    // Pure mathematical dataflow nodes must not be flagged for missing execution flow.
+    if (graphType === 'ShadersUE') {
+      return;
+    }
+
     // Check impure functions (have input exec pin) for unconnected execution
     const execInput = inputs.find(p => p.type === 'exec');
     if (execInput && nodeType !== 'event' && !lowerTitle.includes('construction')) {
@@ -177,3 +183,5 @@ export function validateBlueprintGraph(
     issues,
   };
 }
+
+export const validateGraph = validateBlueprintGraph;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateBlueprintGraph } from '../blueprintValidator';
+import { validateBlueprintGraph, validateGraph } from '../blueprintValidator';
 import { Node, Edge } from 'reactflow';
 import { NodeData } from '../../types/BlueprintTypes';
 
@@ -136,5 +136,49 @@ describe('validateBlueprintGraph', () => {
     const errorIssue = report.issues.find(i => i.severity === 'error');
     expect(errorIssue?.message).toContain('Latent action "Delay" is not allowed in Construction Script');
   });
+
+  it('validates ShadersUE pure dataflow without requiring entry events or exec pins', () => {
+    const shaderNodes: Node<NodeData>[] = [
+      {
+        id: 'c1',
+        type: 'customNode',
+        position: { x: 50, y: 100 },
+        data: {
+          title: 'Constant3Vector (RGB)',
+          nodeType: 'customNode',
+          inputs: [],
+          outputs: [{ name: 'RGB', type: 'vector3' }],
+        },
+      },
+      {
+        id: 'mul1',
+        type: 'customNode',
+        position: { x: 250, y: 100 },
+        data: {
+          title: 'Multiply',
+          nodeType: 'customNode',
+          inputs: [
+            { name: 'A', type: 'vector3' },
+            { name: 'B', type: 'float' },
+          ],
+          outputs: [{ name: 'Result', type: 'vector3' }],
+        },
+      },
+    ];
+
+    const report = validateBlueprintGraph(shaderNodes, [], 'ShadersUE');
+    expect(report.errorCount).toBe(0);
+    expect(report.warningCount).toBe(0);
+    expect(report.issues.some(i => i.id === 'no-entry-event')).toBe(false);
+    expect(report.issues.some(i => i.id.startsWith('unconnected-exec-in-'))).toBe(false);
+  });
+
+  it('exports validateGraph as an alias for validateBlueprintGraph', () => {
+    expect(validateGraph).toBeDefined();
+    expect(typeof validateGraph).toBe('function');
+    const emptyReport = validateGraph([], []);
+    expect(emptyReport.isValid).toBe(true);
+  });
 });
+
 

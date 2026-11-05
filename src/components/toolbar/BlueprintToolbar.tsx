@@ -191,12 +191,42 @@ export const BlueprintToolbar: React.FC<BlueprintToolbarProps> = ({
           <button
             onClick={() => onSwitchGraph('ConstructionScript')}
             className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-medium transition-all ${
-              activeGraphType === 'ConstructionScript'
+              activeGraphType === 'ConstructionScript' || activeGraphType === 'Construction'
                 ? 'bg-white dark:bg-zinc-800 text-green-500 dark:text-green-400 shadow-sm'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
             <span>🛠️ Construction</span>
+          </button>
+          <button
+            onClick={() => onSwitchGraph('ShadersUE')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+              activeGraphType === 'ShadersUE'
+                ? 'bg-white dark:bg-zinc-800 text-cyan-500 dark:text-cyan-400 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <span>🎨 Shaders</span>
+          </button>
+          <button
+            onClick={() => onSwitchGraph('NiagaraVFX')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+              activeGraphType === 'NiagaraVFX'
+                ? 'bg-white dark:bg-zinc-800 text-orange-500 dark:text-orange-400 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <span>✨ Niagara</span>
+          </button>
+          <button
+            onClick={() => onSwitchGraph('GASStudio')}
+            className={`flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+              activeGraphType === 'GASStudio'
+                ? 'bg-white dark:bg-zinc-800 text-purple-500 dark:text-purple-400 shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <span>⚔️ GAS</span>
           </button>
         </div>
 
@@ -433,10 +463,26 @@ export const BlueprintToolbar: React.FC<BlueprintToolbarProps> = ({
         <button
           onClick={onCopyUE5}
           className="flex items-center space-x-1.5 px-3 py-1 rounded bg-gold-500 hover:bg-gold-400 text-black text-xs font-semibold shadow-sm transition-all shrink-0 cursor-pointer"
-          title="Copy to clipboard for Ctrl+V paste into Unreal Engine 5"
+          title={
+            activeGraphType === 'ShadersUE'
+              ? 'Copy MaterialExpression T3D to Clipboard (Paste in UE5 Material Editor)'
+              : activeGraphType === 'NiagaraVFX'
+              ? 'Copy Niagara Emitter T3D to Clipboard (Paste in UE5 Niagara Editor)'
+              : activeGraphType === 'GASStudio'
+              ? 'Copy GameplayAbility Blueprint T3D to Clipboard (Paste in UE5)'
+              : 'Copy to clipboard for Ctrl+V paste into Unreal Engine 5'
+          }
         >
           <LuClipboardCopy size={13} />
-          <span>Copy UE5</span>
+          <span>
+            {activeGraphType === 'ShadersUE'
+              ? 'Copy Material'
+              : activeGraphType === 'NiagaraVFX'
+              ? 'Copy Niagara'
+              : activeGraphType === 'GASStudio'
+              ? 'Copy GAS'
+              : 'Copy UE5'}
+          </span>
         </button>
 
         <div className="h-4 w-[1px] bg-zinc-300 dark:bg-zinc-800 mx-0.5" />
