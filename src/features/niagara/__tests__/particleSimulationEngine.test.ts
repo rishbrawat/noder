@@ -459,4 +459,24 @@ describe('NiagaraVFX: Particle Simulation Engine', () => {
     const yPos = engine.getBuffers().positions[1];
     expect(yPos).toBeGreaterThanOrEqual(0.0);
   });
+
+  it('should support deterministic seek(targetTime) and track currentTime', () => {
+    const engine = new ParticleSimulationEngine({ ...testConfig, loopDuration: 3.0 }, 500);
+    expect(engine.getCurrentTime()).toBe(0);
+
+    // 10 steps of 0.05s = 0.5s
+    for (let i = 0; i < 10; i++) {
+      engine.step(0.05);
+    }
+    expect(engine.getCurrentTime()).toBeCloseTo(0.5, 2);
+
+    // Seek forward deterministically
+    engine.seek(1.5);
+    expect(engine.getCurrentTime()).toBeCloseTo(1.5, 2);
+    expect(engine.getBuffers().activeCount).toBeGreaterThan(0);
+
+    // Seek backward deterministically rewinds simulation
+    engine.seek(0.1);
+    expect(engine.getCurrentTime()).toBeCloseTo(0.1, 2);
+  });
 });

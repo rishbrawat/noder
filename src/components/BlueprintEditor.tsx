@@ -47,6 +47,7 @@ import { NiagaraEmitterConfig } from '../features/niagara/types/niagaraTypes';
 import { GameplayTagMatrix } from '../features/gas/components/GameplayTagMatrix';
 import { GameplayEffectDrawer } from '../features/gas/components/GameplayEffectDrawer';
 import { AttributeSetInspector } from '../features/gas/components/AttributeSetInspector';
+import { GasCombatSandbox } from '../features/gas/components/GasCombatSandbox';
 import { PRESET_ABILITY_DODGE, PRESET_GAMEPLAY_EFFECTS } from '../features/gas/data/gasCatalog';
 import { compileGameplayAbilityToT3D } from '../features/gas/utils/gasT3DCompiler';
 import { generateGameplayAbilityCpp } from '../features/gas/utils/gasCppGenerator';
@@ -71,7 +72,7 @@ export const BlueprintEditor: React.FC = () => {
   const [isShaderCopied, setIsShaderCopied] = useState<boolean>(false);
   const [isNiagaraCopied, setIsNiagaraCopied] = useState<boolean>(false);
   const [isGasCopied, setIsGasCopied] = useState<boolean>(false);
-  const [activeGasTab, setActiveGasTab] = useState<'tags' | 'effects' | 'attributes'>('tags');
+  const [activeGasTab, setActiveGasTab] = useState<'tags' | 'effects' | 'attributes' | 'sandbox'>('sandbox');
 
   const {
     nodes, edges, onNodesChange, onEdgesChange, onConnect, blueprintName, isLoading,
@@ -545,18 +546,28 @@ export const BlueprintEditor: React.FC = () => {
               <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0 text-xs">
                 <div className="flex items-center space-x-1">
                   <button
+                    onClick={() => setActiveGasTab('sandbox')}
+                    className={`px-2 py-1 rounded transition-colors font-medium cursor-pointer ${
+                      activeGasTab === 'sandbox'
+                        ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    }`}
+                  >
+                    Sandbox
+                  </button>
+                  <button
                     onClick={() => setActiveGasTab('tags')}
-                    className={`px-2.5 py-1 rounded transition-colors font-medium cursor-pointer ${
+                    className={`px-2 py-1 rounded transition-colors font-medium cursor-pointer ${
                       activeGasTab === 'tags'
                         ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
                         : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                     }`}
                   >
-                    Tag Matrix
+                    Tags
                   </button>
                   <button
                     onClick={() => setActiveGasTab('effects')}
-                    className={`px-2.5 py-1 rounded transition-colors font-medium cursor-pointer ${
+                    className={`px-2 py-1 rounded transition-colors font-medium cursor-pointer ${
                       activeGasTab === 'effects'
                         ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
                         : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
@@ -566,7 +577,7 @@ export const BlueprintEditor: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveGasTab('attributes')}
-                    className={`px-2.5 py-1 rounded transition-colors font-medium cursor-pointer ${
+                    className={`px-2 py-1 rounded transition-colors font-medium cursor-pointer ${
                       activeGasTab === 'attributes'
                         ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
                         : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
@@ -593,6 +604,9 @@ export const BlueprintEditor: React.FC = () => {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto">
+                {activeGasTab === 'sandbox' && (
+                  <GasCombatSandbox ability={gasAbility} className="h-full border-0 shadow-none rounded-none" />
+                )}
                 {activeGasTab === 'tags' && (
                   <GameplayTagMatrix
                     policy={gasAbility.tagPolicy}

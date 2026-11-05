@@ -1,8 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { NiagaraEmitterConfig } from '../types/niagaraTypes';
 import { ParticleSimulationEngine } from '../utils/particleSimulationEngine';
-import { LuPlay, LuPause, LuRotateCcw, LuSparkles, LuMaximize2, LuMinimize2, LuMove, LuEye } from 'react-icons/lu';
+import { 
+  LuPlay, 
+  LuPause, 
+  LuRotateCcw, 
+  LuSparkles, 
+  LuMaximize2, 
+  LuMinimize2, 
+  LuMove, 
+  LuEye,
+  LuChevronLeft,
+  LuChevronRight,
+  LuRepeat
+} from 'react-icons/lu';
 
 export type NiagaraViewportMode = 'docked' | 'pip' | 'minimized' | 'fullscreen';
 
@@ -16,12 +28,15 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
   className = '',
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const sliderRef = useRef<HTMLInputElement | null>(null);
+  const timeTextRef = useRef<HTMLSpanElement | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [particleStats, setParticleStats] = useState<{ active: number; max: number }>({
     active: 0,
     max: 10000,
   });
   const [viewportMode, setViewportMode] = useState<NiagaraViewportMode>('docked');
+  const [isLooping, setIsLooping] = useState<boolean>(true);
 
   const engineRef = useRef<ParticleSimulationEngine | null>(null);
   const pointsRef = useRef<THREE.Points | null>(null);
@@ -32,6 +47,7 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
   const frameIdRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(performance.now());
   const isDraggingRef = useRef<boolean>(false);
+  const isScrubbingRef = useRef<boolean>(false);
   const previousMousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const isPlayingRef = useRef<boolean>(isPlaying);
@@ -44,6 +60,21 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     configRef.current = config;
   }, [config]);
 
+  const isLoopingRef = useRef<boolean>(isLooping);
+  useEffect(() => {
+    isLoopingRef.current = isLooping;
+  }, [isLooping]);
+
+  const syncBuffersToGpu = useCallback(() => {
+    if (geometryRef.current) {
+      (geometryRef.current.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+      (geometryRef.current.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+      if (geometryRef.current.attributes.pSize) {
+        (geometryRef.current.attributes.pSize as THREE.BufferAttribute).needsUpdate = true;
+      }
+    }
+  }, []);
+
   // Initialize Three.js scene & simulation engine
   useEffect(() => {
     const container = mountRef.current;
@@ -52,7 +83,7 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     const width = container.clientWidth || 400;
     const height = container.clientHeight || 400;
 
-    // Simulation Engine (Up to 10k particles @ 60 FPS)
+    // Simulation Engine (Up to 10k particles @ 120 FPS)
     const simEngine = new ParticleSimulationEngine(configRef.current, 10000);
     engineRef.current = simEngine;
 
@@ -73,7 +104,7 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     cameraRef.current = camera;
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     rendererRef.current = renderer;
@@ -149,30 +180,44 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     scene.add(points);
     pointsRef.current = points;
 
-    // Animation Loop
+    // 120 FPS High-Refresh Animation Loop with direct DOM timeline update
     lastTimeRef.current = performance.now();
+    let statsThrottle = 0;
+
     const animate = (time: number) => {
       frameIdRef.current = requestAnimationFrame(animate);
 
       const dt = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
 
-      if (engineRef.current && isPlayingRef.current) {
-        engineRef.current.step(dt);
-        const bufs = engineRef.current.getBuffers();
-
-        if (geometryRef.current) {
-          (geometryRef.current.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-          (geometryRef.current.attributes.color as THREE.BufferAttribute).needsUpdate = true;
-          if (geometryRef.current.attributes.pSize) {
-            (geometryRef.current.attributes.pSize as THREE.BufferAttribute).needsUpdate = true;
-          }
+      if (engineRef.current && isPlayingRef.current && !isScrubbingRef.current) {
+        const loopDur = configRef.current.loopDuration ?? 5.0;
+        
+        // Handle timeline loop wrap
+        if (isLoopingRef.current && engineRef.current.getCurrentTime() >= loopDur) {
+          engineRef.current.reset();
         }
 
-        setParticleStats({
-          active: bufs.activeCount,
-          max: bufs.maxParticles,
-        });
+        engineRef.current.step(dt);
+        syncBuffersToGpu();
+
+        const curT = engineRef.current.getCurrentTime();
+        if (sliderRef.current) {
+          sliderRef.current.value = curT.toString();
+        }
+        if (timeTextRef.current) {
+          const frameNum = Math.floor(curT * 120);
+          timeTextRef.current.textContent = `${curT.toFixed(2)}s / ${loopDur.toFixed(2)}s (F${frameNum})`;
+        }
+
+        statsThrottle++;
+        if (statsThrottle % 10 === 0) {
+          const bufs = engineRef.current.getBuffers();
+          setParticleStats({
+            active: bufs.activeCount,
+            max: bufs.maxParticles,
+          });
+        }
       }
 
       renderer.render(scene, camera);
@@ -208,7 +253,7 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [syncBuffersToGpu]);
 
   // Sync config updates to engine
   useEffect(() => {
@@ -228,7 +273,57 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
   const handleRestart = () => {
     if (engineRef.current) {
       engineRef.current.reset();
+      syncBuffersToGpu();
+      if (sliderRef.current) sliderRef.current.value = '0';
+      if (timeTextRef.current) {
+        timeTextRef.current.textContent = `0.00s / ${(config.loopDuration ?? 5.0).toFixed(2)}s (F0)`;
+      }
     }
+  };
+
+  // Timeline Scrubber & Frame Stepping
+  const handleScrubStart = () => {
+    isScrubbingRef.current = true;
+  };
+
+  const handleScrubChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const targetTime = parseFloat(e.target.value);
+    if (engineRef.current) {
+      engineRef.current.seek(targetTime);
+      syncBuffersToGpu();
+      if (timeTextRef.current) {
+        const frameNum = Math.floor(targetTime * 120);
+        timeTextRef.current.textContent = `${targetTime.toFixed(2)}s / ${(config.loopDuration ?? 5.0).toFixed(2)}s (F${frameNum})`;
+      }
+      const bufs = engineRef.current.getBuffers();
+      setParticleStats({
+        active: bufs.activeCount,
+        max: bufs.maxParticles,
+      });
+    }
+  };
+
+  const handleScrubEnd = () => {
+    isScrubbingRef.current = false;
+  };
+
+  const handleStepFrame = (stepFrames: number) => {
+    if (!engineRef.current) return;
+    const curT = engineRef.current.getCurrentTime();
+    const frameDt = (1.0 / 120.0) * stepFrames;
+    const nextT = Math.max(0, curT + frameDt);
+    engineRef.current.seek(nextT);
+    syncBuffersToGpu();
+    if (sliderRef.current) sliderRef.current.value = nextT.toString();
+    if (timeTextRef.current) {
+      const frameNum = Math.floor(nextT * 120);
+      timeTextRef.current.textContent = `${nextT.toFixed(2)}s / ${(config.loopDuration ?? 5.0).toFixed(2)}s (F${frameNum})`;
+    }
+    const bufs = engineRef.current.getBuffers();
+    setParticleStats({
+      active: bufs.activeCount,
+      max: bufs.maxParticles,
+    });
   };
 
   // Mouse Interaction (Orbit around center)
@@ -365,6 +460,72 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
         onMouseLeave={handleMouseUp}
         className="w-full flex-1 cursor-grab active:cursor-grabbing"
       />
+
+      {/* 120 FPS Interactive Timeline Scrubber */}
+      <div className="px-3 py-1.5 bg-zinc-900/95 border-t border-zinc-800 flex items-center space-x-2 text-xs">
+        <button
+          onClick={() => handleStepFrame(-1)}
+          className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+          title="Step Backward 1 Frame (-1/120s)"
+        >
+          <LuChevronLeft className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          onClick={() => setIsPlaying(!isPlaying)}
+          className={`p-1 rounded transition-colors ${
+            isPlaying ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-800 text-zinc-400'
+          }`}
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? <LuPause className="w-3.5 h-3.5" /> : <LuPlay className="w-3.5 h-3.5" />}
+        </button>
+
+        <button
+          onClick={() => handleStepFrame(1)}
+          className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+          title="Step Forward 1 Frame (+1/120s)"
+        >
+          <LuChevronRight className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          onClick={() => setIsLooping(!isLooping)}
+          className={`p-1 rounded transition-colors ${
+            isLooping ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-800 text-zinc-500'
+          }`}
+          title={isLooping ? 'Looping Enabled' : 'Looping Disabled'}
+        >
+          <LuRepeat className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Timeline Range Scrubber */}
+        <input
+          type="range"
+          ref={sliderRef}
+          min="0"
+          max={config.loopDuration ?? 5.0}
+          step="0.00833"
+          defaultValue="0"
+          onMouseDown={handleScrubStart}
+          onChange={handleScrubChange}
+          onMouseUp={handleScrubEnd}
+          onTouchStart={handleScrubStart}
+          onTouchEnd={handleScrubEnd}
+          className="flex-1 accent-orange-500 h-1.5 bg-zinc-800 rounded-lg cursor-ew-resize"
+          title="Scrub Simulation Timeline"
+        />
+
+        {/* Time & Frame Readout */}
+        <span ref={timeTextRef} className="font-mono text-[10px] text-zinc-300 shrink-0">
+          0.00s / {(config.loopDuration ?? 5.0).toFixed(2)}s (F0)
+        </span>
+
+        {/* 120 FPS Status Badge */}
+        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 shrink-0">
+          120 FPS
+        </span>
+      </div>
 
       {/* Footer Info */}
       <div className="px-3 py-1 bg-zinc-900/80 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-400 flex items-center justify-between gap-2 overflow-hidden">

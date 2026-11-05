@@ -23,6 +23,7 @@ import {
   LuUndo2,
   LuRedo2,
   LuSparkles,
+  LuZap,
   LuLayoutGrid,
   LuSave,
   LuMap,
@@ -297,20 +298,46 @@ export const BlueprintToolbar: React.FC<BlueprintToolbarProps> = ({
           ) : null}
         </div>
 
-        {/* Primary Simulation Button */}
-        <button
-          onClick={onStartSimulation}
-          disabled={isSimulating}
-          className={`flex items-center space-x-1.5 px-2.5 py-1 rounded border text-xs font-medium transition-colors ${
-            isSimulating
-              ? 'border-gold-500 bg-gold-500/20 text-gold-400 animate-pulse'
-              : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200'
-          }`}
-          title="Step-by-step visual execution simulator"
-        >
-          <LuPlay size={12} className="text-gold-500" />
-          <span>{isSimulating ? 'Simulating...' : 'Simulate'}</span>
-        </button>
+        {/* Primary Simulation / Mode Engine Status */}
+        {activeGraphType === 'NiagaraVFX' ? (
+          <div
+            className="flex items-center space-x-1 px-2.5 py-1 rounded border border-orange-500/40 bg-orange-500/10 text-orange-400 text-xs font-mono font-medium shadow-sm"
+            title="Niagara GPU/CPU Particle Simulation active at 120 FPS"
+          >
+            <LuSparkles size={12} className="animate-pulse" />
+            <span>Niagara 120 FPS</span>
+          </div>
+        ) : activeGraphType === 'ShadersUE' ? (
+          <div
+            className="flex items-center space-x-1 px-2.5 py-1 rounded border border-blue-500/40 bg-blue-500/10 text-blue-400 text-xs font-mono font-medium shadow-sm"
+            title="WebGL Procedural GLSL Shader active at 120 FPS"
+          >
+            <LuZap size={12} className="text-blue-400" />
+            <span>GLSL 120 FPS</span>
+          </div>
+        ) : activeGraphType === 'GASStudio' ? (
+          <div
+            className="flex items-center space-x-1 px-2.5 py-1 rounded border border-purple-500/40 bg-purple-600/10 text-purple-300 text-xs font-mono font-medium shadow-sm"
+            title="Gameplay Ability System Actor ASC Sandbox running at 120 FPS"
+          >
+            <LuZap size={12} className="text-purple-400 animate-pulse" />
+            <span>ASC 120 FPS</span>
+          </div>
+        ) : (
+          <button
+            onClick={onStartSimulation}
+            disabled={isSimulating}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded border text-xs font-medium transition-colors ${
+              isSimulating
+                ? 'border-gold-500 bg-gold-500/20 text-gold-400 animate-pulse'
+                : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200'
+            }`}
+            title="Step-by-step visual execution simulator"
+          >
+            <LuPlay size={12} className="text-gold-500" />
+            <span>{isSimulating ? 'Simulating...' : 'Simulate'}</span>
+          </button>
+        )}
 
         {/* My Blueprint / Variables */}
         <button

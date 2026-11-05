@@ -22,6 +22,7 @@ export class ParticleSimulationEngine {
   private sizesBuffer: Float32Array;
   private activeCount: number = 0;
   private deadIndices: number[];
+  private currentTime: number = 0;
 
   constructor(config: NiagaraEmitterConfig, maxParticles: number = 10000) {
     this.config = config;
@@ -85,7 +86,25 @@ export class ParticleSimulationEngine {
       this.sizesBuffer[i] = 0;
     }
     this.activeCount = 0;
+    this.currentTime = 0;
     this.burst(this.config.burstInstantaneousCount);
+  }
+
+  public getCurrentTime(): number {
+    return this.currentTime;
+  }
+
+  public seek(targetTime: number) {
+    this.reset();
+    const clampedTarget = Math.max(0, Math.min(targetTime, this.config.loopDuration ?? 5.0));
+    const stepDt = 1.0 / 120.0;
+    let t = 0;
+    while (t < clampedTarget) {
+      const dt = Math.min(stepDt, clampedTarget - t);
+      this.step(dt);
+      t += dt;
+    }
+    this.currentTime = clampedTarget;
   }
 
   private spawnParticle(): boolean {
@@ -128,6 +147,7 @@ export class ParticleSimulationEngine {
     // Sub-step clamping 0 <= dt <= 0.05s to prevent simulation tunneling
     const clampedDt = Math.max(0, Math.min(dt, 0.05));
     if (clampedDt === 0) return;
+    this.currentTime += clampedDt;
 
     // Continuous spawn based on spawn rate
     const spawnPerFrame = this.config.spawnRate * clampedDt;
