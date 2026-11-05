@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NiagaraEmitterConfig, NiagaraStage } from '../types/niagaraTypes';
 import { NIAGARA_MODULES } from '../data/niagaraModulesCatalog';
-import { LuFlame, LuCopy, LuCheck, LuEye } from 'react-icons/lu';
+import { LuFlame, LuCopy, LuCheck, LuEye, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 
 interface EmitterStageStackProps {
   config: NiagaraEmitterConfig;
@@ -27,17 +27,46 @@ export const EmitterStageStack: React.FC<EmitterStageStackProps> = ({
   onCopySystem,
   isCopied = false,
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
+  if (isCollapsed) {
+    return (
+      <div className="w-10 h-full flex flex-col items-center py-3 bg-zinc-900 border-r border-zinc-800 shrink-0 select-none">
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          title="Expand Emitter Stage Stack"
+        >
+          <LuChevronRight className="w-4 h-4 text-orange-400" />
+        </button>
+        <div className="mt-4 [writing-mode:vertical-lr] text-[11px] font-semibold text-zinc-400 tracking-wider uppercase flex items-center space-x-2">
+          <span>Emitter Stack</span>
+          <LuFlame className="w-3.5 h-3.5 text-orange-400 rotate-90" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-80 flex flex-col bg-zinc-900 border-r border-zinc-800 h-full overflow-y-auto select-none text-xs">
+    <div className="w-80 flex flex-col bg-zinc-900 border-r border-zinc-800 h-full overflow-y-auto select-none text-xs shrink-0">
       {/* Header */}
       <div className="p-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-950/60">
         <div className="flex items-center space-x-2">
           <LuFlame className="w-4 h-4 text-orange-400" />
           <span className="font-semibold text-zinc-100">{config.emitterName}</span>
         </div>
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30">
-          {config.simTarget}
-        </span>
+        <div className="flex items-center space-x-1">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30">
+            {config.simTarget}
+          </span>
+          <button
+            onClick={() => setIsCollapsed(true)}
+            className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors ml-1 cursor-pointer"
+            title="Collapse Emitter Stage Stack (Frees Canvas Width)"
+          >
+            <LuChevronLeft className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Copy Niagara T3D Buttons */}

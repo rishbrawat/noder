@@ -512,8 +512,25 @@ export function generateGLSLFragmentShader(
 ): GLSLShaderResult {
   const pbr = evaluateMaterialGraph(nodes, edges, defaultProps);
 
+  const hasFresnel = (nodes || []).some((n) => n.data.title?.includes('Fresnel'));
+  const hasPanner = (nodes || []).some(
+    (n) => n.data.title?.includes('Panner') || n.data.title?.includes('Time')
+  );
+  const hasNoise = (nodes || []).some(
+    (n) =>
+      n.data.title?.toLowerCase().includes('noise') ||
+      n.data.title?.toLowerCase().includes('voronoi')
+  );
+  const hasWPO =
+    (nodes || []).some((n) => n.data.title?.includes('WorldPositionOffset')) ||
+    (edges || []).some((e) => (e.targetHandle || '').toLowerCase().includes('worldpositionoffset'));
+
   const vertexShader = `
 precision highp float;
+
+uniform float u_Time;
+uniform vec3 u_WPO;
+uniform float u_HasWPO;
 
 varying vec3 v_Normal;
 varying vec3 v_WorldPosition;
@@ -523,6 +540,12 @@ void main() {
   v_Normal = normalize(normalMatrix * normal);
   v_Uv = uv;
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  
+  if (u_HasWPO > 0.5) {
+    float wave = sin(position.y * 4.0 + u_Time * 3.0) * 0.12;
+    worldPos.xyz += normal * (wave + length(u_WPO) * 0.2);
+  }
+  
   v_WorldPosition = worldPos.xyz;
   gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
@@ -538,14 +561,48 @@ uniform float u_Roughness;
 uniform vec3 u_Emissive;
 uniform float u_Opacity;
 uniform float u_Time;
+uniform float u_HasFresnel;
+uniform float u_HasPanner;
+uniform float u_HasNoise;
 
 varying vec3 v_Normal;
 varying vec3 v_WorldPosition;
 varying vec2 v_Uv;
 
+vec2 hash2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+float voronoi(vec2 x) {
+  vec2 n = floor(x);
+  vec2 f = fract(x);
+  float m = 8.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 g = vec2(float(i), float(j));
+      vec2 o = hash2(n + g);
+      vec2 r = g + o - f;
+      float d = dot(r, r);
+      m = min(m, d);
+    }
+  }
+  return sqrt(m);
+}
+
 void main() {
   vec3 N = normalize(v_Normal);
   vec3 V = normalize(cameraPosition - v_WorldPosition);
+  vec2 uv = v_Uv;
+
+  if (u_HasPanner > 0.5) {
+    uv += vec2(u_Time * 0.25, u_Time * 0.12);
+  }
+
+  vec3 effectiveBase = u_BaseColor;
+  if (u_HasNoise > 0.5) {
+    float n = voronoi(uv * 7.0);
+    effectiveBase = mix(effectiveBase, effectiveBase * 0.35, n);
+  }
   
   // Studio 3-Point Lighting Rig Directions
   vec3 L_Key  = normalize(vec3(4.0, 5.0, 4.0));
@@ -557,17 +614,21 @@ void main() {
   float NdotRim  = max(dot(N, L_Rim),  0.0);
   
   // Diffuse illumination with ambient baseline
-  vec3 diffuse = u_BaseColor * (NdotKey * 1.0 + NdotFill * 0.45 + NdotRim * 0.25 + vec3(0.18));
+  vec3 diffuse = effectiveBase * (NdotKey * 1.0 + NdotFill * 0.45 + NdotRim * 0.25 + vec3(0.18));
   
   // Specular Blinn-Phong highlight
   vec3 H = normalize(L_Key + V);
   float shininess = mix(96.0, 4.0, u_Roughness);
   float spec = pow(max(dot(N, H), 0.0), shininess) * u_Specular;
   
-  // Fresnel rim falloff
-  float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0) * (1.0 - u_Roughness);
+  // Procedural Fresnel rim falloff
+  float fresnelExp = u_HasFresnel > 0.5 ? 2.5 : 4.0;
+  float fresnel = pow(1.0 - max(dot(N, V), 0.0), fresnelExp) * (1.0 - u_Roughness * 0.5);
+  vec3 fresnelGlow = u_HasFresnel > 0.5 
+    ? vec3(0.25, 0.75, 1.0) * fresnel * 1.6 
+    : vec3(fresnel * 0.35 * (1.0 - u_Roughness));
   
-  vec3 finalColor = diffuse + vec3(spec) + u_Emissive + (fresnel * 0.35 * (1.0 - u_Roughness));
+  vec3 finalColor = diffuse + vec3(spec) + u_Emissive + fresnelGlow;
   gl_FragColor = vec4(finalColor, u_Opacity);
 }
 `.trim();
@@ -579,6 +640,11 @@ void main() {
     u_Roughness: { value: pbr.roughness },
     u_Emissive: { value: pbr.emissiveColor },
     u_Opacity: { value: pbr.opacity },
+    u_WPO: { value: pbr.worldPositionOffset ?? [0, 0, 0] },
+    u_HasFresnel: { value: hasFresnel ? 1.0 : 0.0 },
+    u_HasPanner: { value: hasPanner ? 1.0 : 0.0 },
+    u_HasNoise: { value: hasNoise ? 1.0 : 0.0 },
+    u_HasWPO: { value: hasWPO ? 1.0 : 0.0 },
     u_Time: { value: 0.0 },
   };
 

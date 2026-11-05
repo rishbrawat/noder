@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { NiagaraEmitterConfig } from '../types/niagaraTypes';
 import { ParticleSimulationEngine } from '../utils/particleSimulationEngine';
-import { LuPlay, LuPause, LuRotateCcw, LuSparkles, LuMaximize2, LuMinimize2 } from 'react-icons/lu';
+import { LuPlay, LuPause, LuRotateCcw, LuSparkles, LuMaximize2, LuMinimize2, LuMove, LuEye } from 'react-icons/lu';
+
+export type NiagaraViewportMode = 'docked' | 'pip' | 'minimized' | 'fullscreen';
 
 interface NiagaraPreviewViewportProps {
   config: NiagaraEmitterConfig;
@@ -19,7 +21,7 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     active: 0,
     max: 10000,
   });
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [viewportMode, setViewportMode] = useState<NiagaraViewportMode>('docked');
 
   const engineRef = useRef<ParticleSimulationEngine | null>(null);
   const pointsRef = useRef<THREE.Points | null>(null);
@@ -259,11 +261,29 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     isDraggingRef.current = false;
   };
 
+  if (viewportMode === 'minimized') {
+    return (
+      <div
+        onClick={() => setViewportMode('docked')}
+        className="fixed bottom-12 right-6 z-30 flex items-center space-x-2 px-3 py-2 rounded-lg bg-zinc-900 border border-orange-500/50 shadow-2xl cursor-pointer hover:bg-zinc-800 transition-all select-none"
+      >
+        <LuSparkles className="w-4 h-4 text-orange-400 animate-pulse" />
+        <span className="font-semibold text-xs text-zinc-200">Niagara VFX ({particleStats.active})</span>
+        <span className="text-[10px] font-mono px-1 rounded bg-orange-500/20 text-orange-400">Expand</span>
+      </div>
+    );
+  }
+
+  const containerClasses =
+    viewportMode === 'fullscreen'
+      ? 'fixed inset-4 z-50'
+      : viewportMode === 'pip'
+      ? 'fixed bottom-12 right-6 w-96 h-80 z-30 rounded-xl shadow-2xl'
+      : `w-96 h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 ${className}`;
+
   return (
     <div
-      className={`relative flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl flex-1 h-full select-none ${
-        isExpanded ? 'fixed inset-4 z-50' : ''
-      } ${className}`}
+      className={`relative flex flex-col bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl select-none ${containerClasses}`}
     >
       {/* Top Controls Bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900/90 border-b border-zinc-800 text-xs backdrop-blur z-10">
@@ -305,13 +325,33 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
             <span>Burst (250)</span>
           </button>
 
+          {/* PIP / Dock toggle */}
+          <button
+            onClick={() => setViewportMode(viewportMode === 'pip' ? 'docked' : 'pip')}
+            className={`p-1.5 rounded transition-colors ${
+              viewportMode === 'pip' ? 'text-orange-400 bg-orange-500/20' : 'text-zinc-400 hover:text-white'
+            }`}
+            title={viewportMode === 'pip' ? 'Dock to right sidebar' : 'Float as Picture-in-Picture (PIP)'}
+          >
+            <LuMove className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Minimize to badge */}
+          <button
+            onClick={() => setViewportMode('minimized')}
+            className="p-1.5 rounded text-zinc-400 hover:text-white"
+            title="Minimize to floating badge"
+          >
+            <LuEye className="w-3.5 h-3.5" />
+          </button>
+
           {/* Maximize */}
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => setViewportMode(viewportMode === 'fullscreen' ? 'docked' : 'fullscreen')}
             className="p-1.5 rounded text-zinc-400 hover:text-white"
-            title="Maximize Viewport"
+            title="Toggle Fullscreen Maximize"
           >
-            {isExpanded ? <LuMinimize2 className="w-3.5 h-3.5" /> : <LuMaximize2 className="w-3.5 h-3.5" />}
+            {viewportMode === 'fullscreen' ? <LuMinimize2 className="w-3.5 h-3.5" /> : <LuMaximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>

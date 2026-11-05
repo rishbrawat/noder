@@ -500,7 +500,7 @@ export const BlueprintEditor: React.FC = () => {
         )}
         <div className="flex-1 flex relative overflow-hidden">
           {activeGraphType === 'NiagaraVFX' && (
-            <div className="w-80 h-full flex flex-col shrink-0 z-10 border-r border-zinc-800 bg-zinc-900 overflow-hidden">
+            <div className="h-full flex flex-col shrink-0 z-10 border-r border-zinc-800 bg-zinc-900 overflow-hidden">
               <EmitterStageStack
                 config={effectiveNiagaraConfig}
                 onChangeConfig={handleNiagaraConfigChange}
@@ -527,14 +527,18 @@ export const BlueprintEditor: React.FC = () => {
             />
           </div>
           {activeGraphType === 'ShadersUE' && (
-            <div className="w-96 h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">
-              <ShaderPreviewViewport materialProperties={materialProperties} className="h-full" />
-            </div>
+            <ShaderPreviewViewport
+              materialProperties={materialProperties}
+              nodes={nodes}
+              edges={edges}
+              className="h-full"
+            />
           )}
           {activeGraphType === 'NiagaraVFX' && (
-            <div className="w-96 h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">
-              <NiagaraPreviewViewport config={effectiveNiagaraConfig} className="h-full" />
-            </div>
+            <NiagaraPreviewViewport
+              config={effectiveNiagaraConfig}
+              className="h-full"
+            />
           )}
           {activeGraphType === 'GASStudio' && (
             <div className="w-[420px] h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">

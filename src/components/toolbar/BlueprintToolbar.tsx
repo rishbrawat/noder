@@ -345,6 +345,16 @@ export const BlueprintToolbar: React.FC<BlueprintToolbarProps> = ({
           <LuHistory size={14} className="text-gold-500" />
         </button>
 
+        {/* Quick UE5 Live Bridge Launcher */}
+        <button
+          onClick={onOpenRemoteBridge}
+          className="flex items-center space-x-1 px-2 py-1 rounded border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 text-green-400 text-xs font-medium transition-colors cursor-pointer"
+          title="Direct Unreal Engine Remote Bridge (Port 8080 & Headless)"
+        >
+          <LuRadio size={12} className="text-green-400 animate-pulse" />
+          <span className="hidden md:inline">UE5 Live</span>
+        </button>
+
         {/* Bridges & Tools Dropdown */}
         <div className="relative">
           <button
