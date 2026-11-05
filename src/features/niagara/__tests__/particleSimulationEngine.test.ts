@@ -325,4 +325,138 @@ describe('NiagaraVFX: Particle Simulation Engine', () => {
     const yPos = engine.getBuffers().positions[1];
     expect(yPos).toBeGreaterThanOrEqual(-1.2);
   });
+
+  it('should accelerate particles towards Point Attractor position with radial pull', () => {
+    const attractorConfig: NiagaraEmitterConfig = {
+      ...testConfig,
+      spawnRate: 0,
+      burstInstantaneousCount: 1,
+      initialVelocityMagnitude: 0,
+      gravityForceZ: 0,
+      curlNoiseStrength: 0,
+      dragCoefficient: 0,
+      sphereRadius: 0,
+      lifetimeMin: 5,
+      lifetimeMax: 5,
+      pointAttractorEnabled: true,
+      pointAttractorStrength: 2000,
+      pointAttractorPosition: [2.0, 1.0, 0.0],
+      pointAttractorRadius: 100,
+      pointAttractorFalloff: 1.0,
+    };
+    const engine = new ParticleSimulationEngine(attractorConfig, 10);
+    engine.step(0.02); // Initial step to spawn particle near (0, 0.05, 0)
+    const initX = engine.getBuffers().positions[0];
+
+    // Step forward several frames
+    for (let i = 0; i < 15; i++) {
+      engine.step(0.02);
+    }
+    const currentX = engine.getBuffers().positions[0];
+    // Particle should have moved towards attractor at X = 2.0
+    expect(currentX).toBeGreaterThan(initX);
+  });
+
+  it('should interpolate particle size from initialSize to endSize in sizesBuffer', () => {
+    const sizeConfig: NiagaraEmitterConfig = {
+      ...testConfig,
+      spawnRate: 0,
+      burstInstantaneousCount: 1,
+      initialSize: 20.0,
+      endSize: 2.0,
+      sizeOverLifeEnabled: true,
+      lifetimeMin: 1.0,
+      lifetimeMax: 1.0,
+    };
+    const engine = new ParticleSimulationEngine(sizeConfig, 10);
+    engine.step(0.02);
+    const buffers = engine.getBuffers();
+    expect(buffers.sizes).toBeDefined();
+    expect(buffers.sizes.length).toBe(10);
+    // Early life: size should be close to 20
+    const earlySize = buffers.sizes[0];
+    expect(earlySize).toBeGreaterThan(15.0);
+
+    // Step past half lifetime (~0.5s)
+    for (let i = 0; i < 15; i++) {
+      engine.step(0.03);
+    }
+    const midSize = engine.getBuffers().sizes[0];
+    expect(midSize).toBeLessThan(earlySize);
+  });
+
+  it('should apply linear force (ambient wind) along configured vector', () => {
+    const windConfig: NiagaraEmitterConfig = {
+      ...testConfig,
+      spawnRate: 0,
+      burstInstantaneousCount: 1,
+      initialVelocityMagnitude: 0,
+      gravityForceZ: 0,
+      curlNoiseStrength: 0,
+      dragCoefficient: 0,
+      sphereRadius: 0,
+      linearForce: [500, 0, 0], // wind along +X
+      lifetimeMin: 5,
+      lifetimeMax: 5,
+    };
+    const engine = new ParticleSimulationEngine(windConfig, 10);
+    engine.step(0.01);
+    const startX = engine.getBuffers().positions[0];
+
+    for (let i = 0; i < 10; i++) {
+      engine.step(0.02);
+    }
+    const finalX = engine.getBuffers().positions[0];
+    expect(finalX).toBeGreaterThan(startX);
+  });
+
+  it('should preserve constant initialSize when sizeOverLifeEnabled is false', () => {
+    const fixedSizeConfig: NiagaraEmitterConfig = {
+      ...testConfig,
+      spawnRate: 0,
+      burstInstantaneousCount: 1,
+      initialSize: 15.0,
+      endSize: 2.0,
+      sizeOverLifeEnabled: false,
+      lifetimeMin: 1.0,
+      lifetimeMax: 1.0,
+    };
+    const engine = new ParticleSimulationEngine(fixedSizeConfig, 10);
+    engine.step(0.02);
+    expect(engine.getBuffers().sizes[0]).toBe(15.0);
+
+    for (let i = 0; i < 20; i++) {
+      engine.step(0.03);
+    }
+    expect(engine.getBuffers().sizes[0]).toBe(15.0);
+  });
+
+  it('should gracefully handle non-positive dt values without advancing time', () => {
+    const engine = new ParticleSimulationEngine(testConfig, 10);
+    expect(() => engine.step(0)).not.toThrow();
+    expect(() => engine.step(-0.5)).not.toThrow();
+  });
+
+  it('should normalize arbitrary non-unit collision plane normals during reflection', () => {
+    const unnormalizedPlaneConfig: NiagaraEmitterConfig = {
+      ...testConfig,
+      spawnRate: 0,
+      burstInstantaneousCount: 1,
+      initialVelocityMagnitude: 0,
+      gravityForceZ: -500,
+      collisionEnabled: true,
+      collisionPlaneNormal: [0, 5.0, 0], // non-unit normal along +Y
+      collisionPlaneHeight: 0.0,
+      bounciness: 0.5,
+      lifetimeMin: 5,
+      lifetimeMax: 5,
+    };
+    const engine = new ParticleSimulationEngine(unnormalizedPlaneConfig, 10);
+    // Step forward until particle hits the floor plane at Y = 0.0
+    for (let i = 0; i < 15; i++) {
+      engine.step(0.03);
+    }
+    const yPos = engine.getBuffers().positions[1];
+    expect(yPos).toBeGreaterThanOrEqual(0.0);
+  });
 });

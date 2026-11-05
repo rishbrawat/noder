@@ -10,6 +10,7 @@ export interface Particle {
   age: number;
   lifetime: number;
   alive: boolean;
+  size?: number;
 }
 
 export class ParticleSimulationEngine {
@@ -18,6 +19,7 @@ export class ParticleSimulationEngine {
   private config: NiagaraEmitterConfig;
   private positionsBuffer: Float32Array;
   private colorsBuffer: Float32Array;
+  private sizesBuffer: Float32Array;
   private activeCount: number = 0;
   private deadIndices: number[];
 
@@ -27,6 +29,7 @@ export class ParticleSimulationEngine {
     this.particles = new Array(maxParticles);
     this.positionsBuffer = new Float32Array(maxParticles * 3);
     this.colorsBuffer = new Float32Array(maxParticles * 4);
+    this.sizesBuffer = new Float32Array(maxParticles);
     this.deadIndices = new Array(maxParticles);
 
     for (let i = 0; i < maxParticles; i++) {
@@ -40,6 +43,7 @@ export class ParticleSimulationEngine {
         age: 0,
         lifetime: 1,
         alive: false,
+        size: 0,
       };
       // Reverse index fill so pop() serves slots 0, 1, 2...
       this.deadIndices[i] = maxParticles - 1 - i;
@@ -49,6 +53,7 @@ export class ParticleSimulationEngine {
       this.positionsBuffer[i * 3 + 1] = 99999;
       this.positionsBuffer[i * 3 + 2] = 99999;
       this.colorsBuffer[i * 4 + 3] = 0;
+      this.sizesBuffer[i] = 0;
     }
 
     // Trigger initial burst
@@ -71,11 +76,13 @@ export class ParticleSimulationEngine {
     for (let i = 0; i < this.maxParticles; i++) {
       this.particles[i].alive = false;
       this.particles[i].age = 0;
+      this.particles[i].size = 0;
       this.deadIndices[i] = this.maxParticles - 1 - i;
       this.positionsBuffer[i * 3] = 99999;
       this.positionsBuffer[i * 3 + 1] = 99999;
       this.positionsBuffer[i * 3 + 2] = 99999;
       this.colorsBuffer[i * 4 + 3] = 0;
+      this.sizesBuffer[i] = 0;
     }
     this.activeCount = 0;
     this.burst(this.config.burstInstantaneousCount);
@@ -89,6 +96,7 @@ export class ParticleSimulationEngine {
 
     p.alive = true;
     p.age = 0;
+    p.size = this.config.initialSize ?? 12.0;
     p.lifetime =
       this.config.lifetimeMin +
       Math.random() * Math.max(0, this.config.lifetimeMax - this.config.lifetimeMin);
@@ -117,8 +125,9 @@ export class ParticleSimulationEngine {
   }
 
   public step(dt: number) {
-    // Sub-step clamping dt <= 0.05s to prevent simulation tunneling
-    const clampedDt = Math.min(dt, 0.05);
+    // Sub-step clamping 0 <= dt <= 0.05s to prevent simulation tunneling
+    const clampedDt = Math.max(0, Math.min(dt, 0.05));
+    if (clampedDt === 0) return;
 
     // Continuous spawn based on spawn rate
     const spawnPerFrame = this.config.spawnRate * clampedDt;
@@ -133,10 +142,31 @@ export class ParticleSimulationEngine {
     }
 
     const gravityAcc = (this.config.gravityForceZ / 100) * clampedDt;
-    const dragFactor = Math.max(0, 1.0 - this.config.dragCoefficient * clampedDt);
+    const linearForceX = ((this.config.linearForce?.[0] ?? 0) / 100) * clampedDt;
+    const linearForceY = ((this.config.linearForce?.[1] ?? 0) / 100) * clampedDt;
+    const linearForceZ = ((this.config.linearForce?.[2] ?? 0) / 100) * clampedDt;
+    const dragFactor = Math.exp(-Math.max(0, this.config.dragCoefficient) * clampedDt);
     const noiseStrength = (this.config.curlNoiseStrength / 100) * clampedDt;
     const freq = this.config.curlNoiseFrequency;
+
+    // Point attractor force parameters
+    const hasAttractor = (this.config.pointAttractorEnabled ?? false) || ((this.config.pointAttractorStrength ?? 0) !== 0);
+    const attractorPos = this.config.pointAttractorPosition ?? [0, 1.0, 0];
+    const attractorStrength = (this.config.pointAttractorStrength ?? 0) / 100;
+    const attractorRadius = Math.max(0.01, (this.config.pointAttractorRadius ?? 100) / 100);
+    const falloff = this.config.pointAttractorFalloff ?? 2.0;
+
+    // Collision plane parameters with unit normal normalization
+    const collisionEnabled = this.config.collisionEnabled ?? true;
+    const rawNormal = this.config.collisionPlaneNormal ?? [0, 1, 0];
+    const normLen = Math.hypot(rawNormal[0], rawNormal[1], rawNormal[2]) || 1.0;
+    const planeNormal = [rawNormal[0] / normLen, rawNormal[1] / normLen, rawNormal[2] / normLen];
+    const planeHeight = this.config.collisionPlaneHeight ?? -1.2;
     const restitution = this.config.bounciness ?? 0.45;
+    const friction = this.config.collisionFriction ?? 0.2;
+
+    const initialSize = this.config.initialSize ?? 12.0;
+    const endSize = this.config.endSize ?? 2.0;
 
     let livingCount = 0;
 
@@ -148,6 +178,7 @@ export class ParticleSimulationEngine {
         this.positionsBuffer[i * 3 + 1] = 99999;
         this.positionsBuffer[i * 3 + 2] = 99999;
         this.colorsBuffer[i * 4 + 3] = 0;
+        this.sizesBuffer[i] = 0;
         continue;
       }
 
@@ -159,44 +190,84 @@ export class ParticleSimulationEngine {
         this.positionsBuffer[i * 3 + 1] = 99999;
         this.positionsBuffer[i * 3 + 2] = 99999;
         this.colorsBuffer[i * 4 + 3] = 0;
+        this.sizesBuffer[i] = 0;
         continue;
       }
 
       livingCount++;
       const normAge = p.age / p.lifetime;
 
-      // 1. Apply Gravity
-      p.vy += gravityAcc;
+      // 1. Point Attractor Force
+      if (hasAttractor && attractorStrength !== 0) {
+        const adx = attractorPos[0] - p.x;
+        const ady = attractorPos[1] - p.y;
+        const adz = attractorPos[2] - p.z;
+        const dist = Math.sqrt(adx * adx + ady * ady + adz * adz) + 0.001;
+        const falloffFactor = 1.0 / Math.pow(1.0 + dist / attractorRadius, falloff);
+        const forceMag = attractorStrength * falloffFactor * clampedDt;
+        p.vx += (adx / dist) * forceMag;
+        p.vy += (ady / dist) * forceMag;
+        p.vz += (adz / dist) * forceMag;
+      }
 
-      // 2. Apply 3D Curl Turbulence
+      // 2. Linear Force (Wind/Draft) & Gravity
+      p.vx += linearForceX;
+      p.vy += linearForceY + gravityAcc;
+      p.vz += linearForceZ;
+
+      // 3. 3D Curl Noise Turbulence
       const nx = Math.sin(p.y * freq + p.age * 2) * noiseStrength;
       const ny = Math.cos(p.z * freq + p.age * 2) * noiseStrength * 0.5;
       const nz = Math.sin(p.x * freq + p.age * 2) * noiseStrength;
 
-      // 3. Aerodynamic Drag Damping
+      // 4. Aerodynamic Drag Damping
       p.vx = (p.vx + nx) * dragFactor;
       p.vy = (p.vy + ny) * dragFactor;
       p.vz = (p.vz + nz) * dragFactor;
 
-      // 4. Semi-implicit Euler Position Integration
+      // 5. Semi-implicit Euler Position Integration
       p.x += p.vx * clampedDt;
       p.y += p.vy * clampedDt;
       p.z += p.vz * clampedDt;
 
-      // 5. Floor Plane Collision & Reflection at y = -1.2
-      if (p.y < -1.2) {
-        p.y = -1.2;
-        p.vy = -p.vy * restitution;
-        p.vx *= 0.8; // friction
-        p.vz *= 0.8;
+      // 6. Planar Collision Reflection & Friction Response
+      if (collisionEnabled) {
+        const distFromPlane = p.x * planeNormal[0] + p.y * planeNormal[1] + p.z * planeNormal[2] - planeHeight;
+        const velDotNormal = p.vx * planeNormal[0] + p.vy * planeNormal[1] + p.vz * planeNormal[2];
+
+        if (distFromPlane < 0 && velDotNormal < 0) {
+          p.x -= distFromPlane * planeNormal[0];
+          p.y -= distFromPlane * planeNormal[1];
+          p.z -= distFromPlane * planeNormal[2];
+
+          const vnX = velDotNormal * planeNormal[0];
+          const vnY = velDotNormal * planeNormal[1];
+          const vnZ = velDotNormal * planeNormal[2];
+
+          const vtX = p.vx - vnX;
+          const vtY = p.vy - vnY;
+          const vtZ = p.vz - vnZ;
+
+          const frictionFactor = Math.max(0, 1.0 - friction);
+          p.vx = vtX * frictionFactor - vnX * restitution;
+          p.vy = vtY * frictionFactor - vnY * restitution;
+          p.vz = vtZ * frictionFactor - vnZ * restitution;
+        }
       }
 
-      // 6. Write to WebGL Positions Buffer
+      // 7. Write to WebGL Positions Buffer
       this.positionsBuffer[i * 3] = p.x;
       this.positionsBuffer[i * 3 + 1] = p.y;
       this.positionsBuffer[i * 3 + 2] = p.z;
 
-      // 7. Color Over Life Ramp Interpolation
+      // 8. Size Over Life Interpolation
+      const curSize = (this.config.sizeOverLifeEnabled ?? true)
+        ? (initialSize * (1 - normAge) + endSize * normAge)
+        : initialSize;
+      p.size = curSize;
+      this.sizesBuffer[i] = curSize;
+
+      // 9. Color Over Life Ramp Interpolation
       const c0 = this.config.initialColor;
       const c1 = this.config.endColor;
       const r = c0[0] * (1 - normAge) + c1[0] * normAge;
@@ -217,6 +288,7 @@ export class ParticleSimulationEngine {
     return {
       positions: this.positionsBuffer,
       colors: this.colorsBuffer,
+      sizes: this.sizesBuffer,
       activeCount: this.activeCount,
       maxParticles: this.maxParticles,
     };

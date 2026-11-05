@@ -143,5 +143,96 @@ describe('NiagaraVFX: UE5 Niagara Emitter T3D Compiler', () => {
     expect(lines[0]).toBe('Begin Object Class=/Script/Niagara.NiagaraEmitter Name="NE_MagicFountain"');
     expect(lines[lines.length - 1]).toBe('End Object');
   });
+
+  it('should compile valid UNiagaraSystem T3D clipboard wrapper when requested', () => {
+    const systemResult = compileNiagaraToT3D(baseConfig, { asSystem: true, systemName: 'NS_MagicSpell' });
+    expect(systemResult.systemName).toBe('NS_MagicSpell');
+    expect(systemResult.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraSystem Name="NS_MagicSpell"');
+    expect(systemResult.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraScript Name="SystemSpawnScript"');
+    expect(systemResult.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraScript Name="SystemUpdateScript"');
+    expect(systemResult.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraEmitterHandle Name="NiagaraEmitterHandle_0"');
+    expect(systemResult.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraEmitter Name="NE_MagicFountain"');
+    expect(systemResult.t3dText.endsWith('End Object')).toBe(true);
+  });
+
+  it('should serialize Point Attractor module when enabled in config', () => {
+    const attractorConfig: NiagaraEmitterConfig = {
+      ...baseConfig,
+      pointAttractorEnabled: true,
+      pointAttractorStrength: 800,
+      pointAttractorPosition: [100, 200, 50],
+      pointAttractorRadius: 250,
+      pointAttractorFalloff: 2.5,
+    };
+    const result = compileNiagaraToT3D(attractorConfig);
+    expect(result.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraNodeFunctionCall Name="NiagaraNodeFunctionCall_PointAttractor"');
+    expect(result.t3dText).toContain('FunctionName="PointAttractionForce"');
+    expect(result.t3dText).toContain('AttractorPosition=(X=100.00,Y=200.00,Z=50.00)');
+    expect(result.t3dText).toContain('AttractionStrength=800.00');
+    expect(result.t3dText).toContain('AttractionRadius=250.00');
+    expect(result.t3dText).toContain('FalloffExponent=2.50');
+  });
+
+  it('should serialize ScaleSpriteSize module when size over life is enabled', () => {
+    const sizeConfig: NiagaraEmitterConfig = {
+      ...baseConfig,
+      sizeOverLifeEnabled: true,
+      initialSize: 32.0,
+      endSize: 4.5,
+    };
+    const result = compileNiagaraToT3D(sizeConfig);
+    expect(result.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraNodeFunctionCall Name="NiagaraNodeFunctionCall_ScaleSpriteSize"');
+    expect(result.t3dText).toContain('FunctionName="ScaleSpriteSize"');
+    expect(result.t3dText).toContain('InitialSize=32.00');
+    expect(result.t3dText).toContain('EndSize=4.50');
+  });
+
+  it('should serialize Collision module when planar collision is enabled', () => {
+    const collisionConfig: NiagaraEmitterConfig = {
+      ...baseConfig,
+      collisionEnabled: true,
+      bounciness: 0.65,
+      collisionFriction: 0.3,
+      collisionPlaneHeight: -1.5,
+    };
+    const result = compileNiagaraToT3D(collisionConfig);
+    expect(result.t3dText).toContain('FunctionName="Collision"');
+    expect(result.t3dText).toContain('Restitution=0.65');
+    expect(result.t3dText).toContain('Friction=0.30');
+    expect(result.t3dText).toContain('PlaneHeight=-1.50');
+    expect(result.t3dText).toContain('PlaneNormal=(X=0.00,Y=1.00,Z=0.00)');
+  });
+
+  it('should serialize AccelerationForce when linear force vector is specified', () => {
+    const accConfig: NiagaraEmitterConfig = {
+      ...baseConfig,
+      linearForce: [250, -50, 100],
+    };
+    const result = compileNiagaraToT3D(accConfig);
+    expect(result.t3dText).toContain('Begin Object Class=/Script/Niagara.NiagaraNodeFunctionCall Name="NiagaraNodeFunctionCall_AccelerationForce"');
+    expect(result.t3dText).toContain('FunctionName="AccelerationForce"');
+    expect(result.t3dText).toContain('Acceleration=(X=250.00,Y=-50.00,Z=100.00)');
+  });
+
+  it('should serialize SpriteSize in InitializeParticle when initialSize is provided', () => {
+    const initSizeConfig: NiagaraEmitterConfig = {
+      ...baseConfig,
+      initialSize: 24.0,
+    };
+    const result = compileNiagaraToT3D(initSizeConfig);
+    expect(result.t3dText).toContain('FunctionName="InitializeParticle"');
+    expect(result.t3dText).toContain('SpriteSize=(X=24.00,Y=24.00)');
+  });
+
+  it('should serialize negative point attractor strength as repulsion force', () => {
+    const repellerConfig: NiagaraEmitterConfig = {
+      ...baseConfig,
+      pointAttractorStrength: -400,
+      pointAttractorPosition: [0, 50, 0],
+    };
+    const result = compileNiagaraToT3D(repellerConfig);
+    expect(result.t3dText).toContain('FunctionName="PointAttractionForce"');
+    expect(result.t3dText).toContain('AttractionStrength=-400.00');
+  });
 });
 

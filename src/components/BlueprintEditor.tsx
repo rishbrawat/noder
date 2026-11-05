@@ -41,6 +41,7 @@ import { NiagaraPreviewViewport } from '../features/niagara/components/NiagaraPr
 import { EmitterStageStack } from '../features/niagara/components/EmitterStageStack';
 import { DEFAULT_NIAGARA_CONFIG } from '../features/niagara/data/niagaraModulesCatalog';
 import { compileNiagaraToT3D } from '../features/niagara/utils/ueNiagaraT3DCompiler';
+import { evaluateNiagaraGraph } from '../features/niagara/utils/niagaraGraphEvaluator';
 import { NiagaraEmitterConfig } from '../features/niagara/types/niagaraTypes';
 
 import { GameplayTagMatrix } from '../features/gas/components/GameplayTagMatrix';
@@ -115,6 +116,136 @@ export const BlueprintEditor: React.FC = () => {
     return evaluateMaterialGraph(nodes, edges);
   }, [nodes, edges]);
 
+  const effectiveNiagaraConfig = useMemo(() => {
+    if (activeGraphType === 'NiagaraVFX') {
+      return evaluateNiagaraGraph(nodes, edges, niagaraConfig);
+    }
+    return niagaraConfig;
+  }, [activeGraphType, nodes, edges, niagaraConfig]);
+
+  const handleNiagaraConfigChange = useCallback((patch: Partial<NiagaraEmitterConfig>) => {
+    setNiagaraConfig(prev => ({ ...prev, ...patch }));
+
+    let hasChanges = false;
+    const updatedNodes = nodes.map((n) => {
+      const title = (n.data?.title || '').trim();
+      const id = n.id;
+      let nodeModified = false;
+      let newSubtitle = n.data?.subtitle;
+
+      const updatedInputs = (n.data?.inputs || []).map((pin) => {
+        const pinName = pin.name.toLowerCase().replace(/[\s_-]+/g, '');
+
+        if (patch.spawnRate !== undefined && (pinName === 'spawnrate' || title === 'Spawn Rate' || id === 'niagara-spawn-1')) {
+          if (pinName === 'spawnrate') {
+            nodeModified = true;
+            newSubtitle = `Spawn Rate: ${patch.spawnRate}/s`;
+            return { ...pin, value: patch.spawnRate };
+          }
+        }
+
+        if (patch.burstInstantaneousCount !== undefined && pinName === 'spawncount') {
+          nodeModified = true;
+          return { ...pin, value: patch.burstInstantaneousCount };
+        }
+
+        if (patch.gravityForceZ !== undefined && pinName === 'gravity') {
+          nodeModified = true;
+          return { ...pin, value: patch.gravityForceZ };
+        }
+
+        if (patch.curlNoiseStrength !== undefined && (pinName === 'curlnoise' || pinName === 'noisestrength')) {
+          nodeModified = true;
+          return { ...pin, value: patch.curlNoiseStrength };
+        }
+
+        if (patch.dragCoefficient !== undefined && (pinName === 'drag' || pinName === 'dragcoefficient')) {
+          nodeModified = true;
+          return { ...pin, value: patch.dragCoefficient };
+        }
+
+        if (patch.pointAttractorStrength !== undefined && pinName === 'attractorstrength') {
+          nodeModified = true;
+          return { ...pin, value: patch.pointAttractorStrength };
+        }
+
+        if (patch.initialSize !== undefined && (pinName === 'initialsize' || pinName === 'spritesize')) {
+          nodeModified = true;
+          return { ...pin, value: patch.initialSize };
+        }
+
+        if (patch.endSize !== undefined && pinName === 'endsize') {
+          nodeModified = true;
+          return { ...pin, value: patch.endSize };
+        }
+
+        if (patch.bounciness !== undefined && pinName === 'restitution') {
+          nodeModified = true;
+          return { ...pin, value: patch.bounciness };
+        }
+
+        if (patch.spriteRendererFacing !== undefined && pinName === 'facingmode') {
+          nodeModified = true;
+          return { ...pin, value: patch.spriteRendererFacing };
+        }
+
+        if (patch.blendMode !== undefined && pinName === 'blendmode') {
+          nodeModified = true;
+          return { ...pin, value: patch.blendMode };
+        }
+
+        if (patch.initialVelocityConeAngle !== undefined && pinName === 'coneangle') {
+          nodeModified = true;
+          return { ...pin, value: patch.initialVelocityConeAngle };
+        }
+
+        if (patch.initialVelocityMagnitude !== undefined && pinName === 'velocitystrength') {
+          nodeModified = true;
+          return { ...pin, value: patch.initialVelocityMagnitude };
+        }
+
+        if (patch.lifetimeMax !== undefined && pinName === 'lifetimemax') {
+          nodeModified = true;
+          return { ...pin, value: patch.lifetimeMax };
+        }
+
+        if (patch.loopDuration !== undefined && pinName === 'loopduration') {
+          nodeModified = true;
+          return { ...pin, value: patch.loopDuration };
+        }
+
+        if (patch.determinism !== undefined && pinName === 'determinism') {
+          nodeModified = true;
+          return { ...pin, value: patch.determinism };
+        }
+
+        return pin;
+      });
+
+      if (patch.simTarget !== undefined && title === 'Emitter Properties') {
+        nodeModified = true;
+        newSubtitle = patch.simTarget;
+      }
+
+      if (nodeModified) {
+        hasChanges = true;
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            subtitle: newSubtitle,
+            inputs: updatedInputs,
+          },
+        };
+      }
+      return n;
+    });
+
+    if (hasChanges) {
+      setNodes(updatedNodes);
+    }
+  }, [nodes, setNodes]);
+
   const handleSelectShaderPreset = useCallback((preset: ShaderPreset) => {
     pushHistory(`Apply Preset: ${preset.name}`);
     const rootNode = nodes.find(n => n.data.title === 'Material Root' || n.id.includes('root'));
@@ -142,14 +273,17 @@ export const BlueprintEditor: React.FC = () => {
     toast.success('Copied UE5 Material Graph to clipboard!');
   }, [nodes, edges, addLog]);
 
-  const handleCopyNiagaraUE5 = useCallback(() => {
-    const result = compileNiagaraToT3D(niagaraConfig);
+  const handleCopyNiagaraUE5 = useCallback((asSystem = false) => {
+    const result = compileNiagaraToT3D(effectiveNiagaraConfig, { asSystem });
     navigator.clipboard.writeText(result.t3dText);
     setIsNiagaraCopied(true);
     setTimeout(() => setIsNiagaraCopied(false), 2000);
-    addLog({ type: 'info', message: `LogNiagara: Copied Niagara Emitter "${result.emitterName}" to UE5 clipboard.` });
-    toast.success('Copied UE5 Niagara Emitter to clipboard!');
-  }, [niagaraConfig, addLog]);
+    const targetLabel = asSystem
+      ? `Niagara System "${result.systemName || result.emitterName}"`
+      : `Niagara Emitter "${result.emitterName}"`;
+    addLog({ type: 'info', message: `LogNiagara: Copied ${targetLabel} to UE5 clipboard.` });
+    toast.success(`Copied UE5 ${asSystem ? 'Niagara System' : 'Niagara Emitter'} to clipboard!`);
+  }, [effectiveNiagaraConfig, addLog]);
 
   const handleCopyGasT3D = useCallback(() => {
     const result = compileGameplayAbilityToT3D(gasAbility);
@@ -358,9 +492,10 @@ export const BlueprintEditor: React.FC = () => {
           {activeGraphType === 'NiagaraVFX' && (
             <div className="w-80 h-full flex flex-col shrink-0 z-10 border-r border-zinc-800 bg-zinc-900 overflow-hidden">
               <EmitterStageStack
-                config={niagaraConfig}
-                onChangeConfig={(patch) => setNiagaraConfig(prev => ({ ...prev, ...patch }))}
-                onCopyUE5={handleCopyNiagaraUE5}
+                config={effectiveNiagaraConfig}
+                onChangeConfig={handleNiagaraConfigChange}
+                onCopyUE5={() => handleCopyNiagaraUE5(false)}
+                onCopySystem={() => handleCopyNiagaraUE5(true)}
                 isCopied={isNiagaraCopied}
               />
             </div>
@@ -388,7 +523,7 @@ export const BlueprintEditor: React.FC = () => {
           )}
           {activeGraphType === 'NiagaraVFX' && (
             <div className="w-96 h-full flex flex-col border-l border-zinc-800 bg-zinc-950 z-10 shrink-0 overflow-hidden">
-              <NiagaraPreviewViewport config={niagaraConfig} className="h-full" />
+              <NiagaraPreviewViewport config={effectiveNiagaraConfig} className="h-full" />
             </div>
           )}
           {activeGraphType === 'GASStudio' && (

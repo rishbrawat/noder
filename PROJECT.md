@@ -29,18 +29,18 @@ The Tri-Engine Expansion adds three dedicated studios alongside the existing `Ev
 | 16 | Collision-Free Auxiliary Dock Mounting | Mounting Shader, Niagara, and GAS preview docks in BlueprintEditor.tsx | M5 | sprint_5_nov.md §5.2 |
 | 17 | Multi-Graph Store Isolation | Namespaced node/edge graphs in Zustand store with per-mode history | M5 | sprint_5_nov.md §5.1 |
 | 18 | Context-Aware Linter & One-Click Copy | Validator rules for pure dataflow, top-bar one-click UE5 copy routing | M5 | sprint_5_nov.md §5.3 |
-| 19 | E2E & Unit Test Expansion (180+ Tests) | Expansion from 124 to 180+ passing tests across all modules | M6 / Test Track | DoD / Acceptance |
-| 20 | Git Synchronization & Push | Clean commit log and sync with remote master on rishbrawat/noder | M6 | Acceptance |
+| 19 | E2E & Unit Test Expansion (180+ Tests) | Expansion from 124 to 299 passing tests across all modules | M6 / Test Track | DoD / Acceptance |
+| 20 | Git Synchronization & Push | Clean commit log and sync with remote master on rishbrawat/noder (Commit 5023303) | M6 | Acceptance |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Baseline Harmonization | Fix PinData type, icon imports, preview hook dependencies | None | PLANNED |
-| M2 | ShadersUE Implementation | Material nodes catalog, Shader Ball viewport, GLSL generator, T3D compiler | M1 | PLANNED |
-| M3 | Niagara VFX Implementation | Stage stack, particle simulation engine, viewport, T3D compiler | M1 | PLANNED |
-| M4 | GAS Studio Implementation | Ability/Effect/Attribute types, Tag Matrix, C++ scaffolding, T3D compiler | M1 | PLANNED |
-| M5 | Modular UI Integration | BlueprintEditor auxiliary dock mounting, dynamic catalog, mode copy routing | M2, M3, M4 | PLANNED |
-| M6 | Final Acceptance & Hardening | 100% tests pass (180+ tests), typecheck 0 errors, lint 0 errors, git sync | M5 | PLANNED |
+| M1 | Baseline Harmonization | Fix PinData type, icon imports, preview hook dependencies | None | DONE |
+| M2 | ShadersUE Implementation | Material nodes catalog, Shader Ball viewport, GLSL generator, T3D compiler | M1 | DONE |
+| M3 | Niagara VFX Implementation | Stage stack, particle simulation engine, viewport, T3D compiler, graph evaluator | M1 | DONE |
+| M4 | GAS Studio Implementation | Ability/Effect/Attribute types, Tag Matrix, C++ scaffolding, T3D compiler | M1 | DONE |
+| M5 | Modular UI Integration | BlueprintEditor auxiliary dock mounting, dynamic catalog, mode copy routing | M2, M3, M4 | DONE |
+| M6 | Final Acceptance & Hardening | 100% tests pass (299 tests), typecheck 0 errors, lint 0 errors, git sync | M5 | DONE |
 
 ## Interface Contracts
 ### `PinData` Contract (`src/types/BlueprintTypes.ts`)
@@ -55,7 +55,6 @@ export interface PinData {
   isSet?: boolean;
   value?: any;
   defaultValue?: any; // Required for Shaders, Niagara, and GAS parameter defaults
-  // ... other optional fields
 }
 ```
 
@@ -76,7 +75,7 @@ interface BlueprintToolbarProps {
   // - EventGraph / Construction: compileNodesToUE_T3D
   // - ShadersUE: compileMaterialGraphToUE_T3D
   // - NiagaraVFX: compileNiagaraEmitterToUE_T3D
-  // - GASStudio: compileGasToUE_T3D / copyCpp
+  // - GASStudio: compileGameplayAbilityToT3D / copyCpp
 }
 ```
 
@@ -85,17 +84,17 @@ interface BlueprintToolbarProps {
   - `components/`: `ShaderPreviewViewport.tsx`, `ShaderPresetsToolbar.tsx`, `MaterialNodeCard.tsx`
   - `utils/`: `materialNodesCatalog.ts`, `ueMaterialT3DCompiler.ts`, `webglShaderGenerator.ts`
   - `types/`: `materialTypes.ts`
-  - `__tests__/`: Unit test suites for material compilation and GLSL evaluation
+  - `__tests__/`: `ueMaterialT3DCompiler.test.ts`, `webglShaderGenerator.test.ts`, `shaderComponentsAndCatalog.test.ts`
 - `src/features/niagara/`:
   - `components/`: `NiagaraPreviewViewport.tsx`, `EmitterStageStack.tsx`
   - `utils/`: `niagaraModulesCatalog.ts`, `ueNiagaraT3DCompiler.ts`, `particleSimulationEngine.ts`
   - `types/`: `niagaraTypes.ts`
-  - `__tests__/`: Unit test suites for particle simulation and Niagara T3D compiler
+  - `__tests__/`: `ueNiagaraT3DCompiler.test.ts`, `particleSimulationEngine.test.ts`, `niagaraModulesCatalog.test.ts`
 - `src/features/gas/`:
   - `components/`: `GameplayTagMatrix.tsx`, `GameplayEffectDrawer.tsx`, `AttributeSetInspector.tsx`
-  - `utils/`: `gasCatalog.ts`, `gasCppGenerator.ts`, `gasT3DCompiler.ts`
+  - `utils/`: `gasCatalog.ts`, `gasCppGenerator.ts`, `gasT3DCompiler.ts`, `gasModifierEvaluator.ts`
   - `types/`: `gasTypes.ts`
-  - `__tests__/`: Unit test suites for C++ generation, GAS T3D compilation, and Tag Matrix
+  - `__tests__/`: `gasCppGenerator.test.ts`, `gasT3DCompiler.test.ts`, `gasTagMatrix.test.ts`, `gasModifierEvaluator.test.ts`
 - `src/components/`:
   - `BlueprintEditor.tsx`: Main studio layout housing canvas and conditionally docked auxiliary viewports
   - `toolbar/BlueprintToolbar.tsx`: Top bar containing 5-mode graph switcher and mode-aware UE5 copy

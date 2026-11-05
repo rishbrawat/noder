@@ -29,23 +29,34 @@ export function getNodePresetsForGraph(graphType: UEGraphType): StandardUENodePr
   }
 
   if (graphType === 'NiagaraVFX') {
-    return NIAGARA_MODULES.map((n): StandardUENodePreset => ({
-      id: n.id,
-      category: n.category as NodeCategory,
-      title: n.name,
-      subtitle: n.stage,
-      nodeType: (n.stage.toLowerCase().includes('spawn') ? 'event' : 'function') as NodeType,
-      color: n.color || '#D97706',
-      inputs: (n.inputs || []).map(i => ({
+    const niagaraNodes = NIAGARA_MODULES.map((n): StandardUENodePreset => {
+      const isSpawn = n.stage.toLowerCase().includes('spawn');
+      const baseInputs: Array<{ name: string; type: PinType; value?: any }> = (n.inputs || []).map(i => ({
         name: i.name,
         type: i.type as PinType,
         value: i.defaultValue,
-      })),
-      outputs: (n.outputs || [{ name: 'Then', type: 'exec' }]).map(o => ({
-        name: o.name,
-        type: o.type as PinType,
-      })),
-    }));
+      }));
+      const inputs = (!isSpawn && !baseInputs.some(i => i.type === 'exec'))
+        ? [{ name: 'Exec', type: 'exec' as PinType }, ...baseInputs]
+        : baseInputs;
+
+      return {
+        id: n.id,
+        category: n.category as NodeCategory,
+        title: n.name,
+        subtitle: n.stage,
+        nodeType: (isSpawn ? 'event' : 'function') as NodeType,
+        color: n.color || '#D97706',
+        inputs,
+        outputs: (n.outputs || [{ name: 'Then', type: 'exec' }]).map(o => ({
+          name: o.name,
+          type: o.type as PinType,
+        })),
+      };
+    });
+
+    const mathNodes = STANDARD_UE_NODES.filter(n => n.category === 'Math');
+    return [...niagaraNodes, ...mathNodes];
   }
 
   if (graphType === 'GASStudio') {

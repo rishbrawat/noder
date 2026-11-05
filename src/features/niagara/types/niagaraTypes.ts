@@ -40,5 +40,22 @@ export interface NiagaraEmitterConfig {
   determinism?: boolean;
   sphereRadius?: number;
   bounciness?: number;
+  // Size Over Life
+  initialSize?: number;
+  endSize?: number;
+  sizeOverLifeEnabled?: boolean;
+  // Point Attractor
+  pointAttractorEnabled?: boolean;
+  pointAttractorStrength?: number;
+  pointAttractorPosition?: [number, number, number];
+  pointAttractorRadius?: number;
+  pointAttractorFalloff?: number;
+  // Collision Plane
+  collisionEnabled?: boolean;
+  collisionPlaneHeight?: number;
+  collisionPlaneNormal?: [number, number, number];
+  collisionFriction?: number;
+  // Linear / Wind Force
+  linearForce?: [number, number, number];
 }
 

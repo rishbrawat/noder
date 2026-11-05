@@ -7,6 +7,7 @@ interface EmitterStageStackProps {
   config: NiagaraEmitterConfig;
   onChangeConfig: (patch: Partial<NiagaraEmitterConfig>) => void;
   onCopyUE5: () => void;
+  onCopySystem?: () => void;
   isCopied?: boolean;
 }
 
@@ -23,6 +24,7 @@ export const EmitterStageStack: React.FC<EmitterStageStackProps> = ({
   config,
   onChangeConfig,
   onCopyUE5,
+  onCopySystem,
   isCopied = false,
 }) => {
   return (
@@ -38,8 +40,8 @@ export const EmitterStageStack: React.FC<EmitterStageStackProps> = ({
         </span>
       </div>
 
-      {/* Copy Niagara T3D Button */}
-      <div className="p-2.5 border-b border-zinc-800 bg-zinc-900/50">
+      {/* Copy Niagara T3D Buttons */}
+      <div className="p-2.5 border-b border-zinc-800 bg-zinc-900/50 space-y-1.5">
         <button
           onClick={onCopyUE5}
           className="w-full flex items-center justify-center space-x-1.5 py-1.5 rounded bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/40 font-mono transition-colors"
@@ -48,6 +50,16 @@ export const EmitterStageStack: React.FC<EmitterStageStackProps> = ({
           {isCopied ? <LuCheck className="w-3.5 h-3.5 text-green-400" /> : <LuCopy className="w-3.5 h-3.5" />}
           <span>{isCopied ? 'Copied to UE5 Clipboard!' : 'Copy UE5 Niagara Emitter'}</span>
         </button>
+        {onCopySystem && (
+          <button
+            onClick={onCopySystem}
+            className="w-full flex items-center justify-center space-x-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 font-mono transition-colors text-[10px]"
+            title="Copy full UNiagaraSystem T3D buffer to Clipboard"
+          >
+            <LuCopy className="w-3 h-3 text-orange-400" />
+            <span>Copy UE5 Niagara System</span>
+          </button>
+        )}
       </div>
 
       {/* Stage Sections */}
@@ -268,6 +280,71 @@ export const EmitterStageStack: React.FC<EmitterStageStackProps> = ({
                         step={0.05}
                         value={config.dragCoefficient}
                         onChange={(e) => onChangeConfig({ dragCoefficient: Number(e.target.value) })}
+                        className="w-full accent-orange-500 h-1 bg-zinc-800 rounded"
+                      />
+                    </div>
+
+                    {/* Point Attractor */}
+                    <div className="space-y-1 pt-1 border-t border-zinc-800/40">
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Point Attractor:</span>
+                        <span className="font-mono text-zinc-200">{config.pointAttractorStrength ?? 0}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1000}
+                        step={25}
+                        value={config.pointAttractorStrength ?? 0}
+                        onChange={(e) => onChangeConfig({
+                          pointAttractorStrength: Number(e.target.value),
+                          pointAttractorEnabled: Number(e.target.value) > 0,
+                        })}
+                        className="w-full accent-orange-500 h-1 bg-zinc-800 rounded"
+                      />
+                    </div>
+
+                    {/* Size Over Life */}
+                    <div className="space-y-1 pt-1 border-t border-zinc-800/40">
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Size Over Life:</span>
+                        <span className="font-mono text-zinc-200">{(config.initialSize ?? 12).toFixed(0)} → {(config.endSize ?? 2).toFixed(0)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input
+                          type="range"
+                          min={1}
+                          max={30}
+                          value={config.initialSize ?? 12}
+                          onChange={(e) => onChangeConfig({ initialSize: Number(e.target.value), sizeOverLifeEnabled: true })}
+                          className="w-full accent-orange-500 h-1 bg-zinc-800 rounded"
+                          title="Initial Size"
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={30}
+                          value={config.endSize ?? 2}
+                          onChange={(e) => onChangeConfig({ endSize: Number(e.target.value), sizeOverLifeEnabled: true })}
+                          className="w-full accent-orange-500 h-1 bg-zinc-800 rounded"
+                          title="End Size"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Floor Bounce Restitution */}
+                    <div className="space-y-1 pt-1 border-t border-zinc-800/40">
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Floor Bounciness:</span>
+                        <span className="font-mono text-zinc-200">{(config.bounciness ?? 0.45).toFixed(2)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0.0}
+                        max={1.0}
+                        step={0.05}
+                        value={config.bounciness ?? 0.45}
+                        onChange={(e) => onChangeConfig({ bounciness: Number(e.target.value), collisionEnabled: true })}
                         className="w-full accent-orange-500 h-1 bg-zinc-800 rounded"
                       />
                     </div>
