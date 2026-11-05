@@ -112,10 +112,17 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
 
         void main() {
           vColor = color;
+          // Discard inactive, offscreen, or transparent particles
+          if (pSize <= 0.0 || vColor.a <= 0.0001 || position.x > 90000.0) {
+            gl_PointSize = 0.0;
+            gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+            return;
+          }
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          float size = pSize > 0.0 ? pSize : 12.0;
+          float size = pSize;
+          float pDist = max(0.1, -mvPosition.z);
           // Scale size with camera perspective (UE Niagara sprite size)
-          gl_PointSize = size * (uScale / -mvPosition.z) * 0.15;
+          gl_PointSize = max(1.0, size * (uScale / pDist) * 0.18);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -135,6 +142,8 @@ export const NiagaraPreviewViewport: React.FC<NiagaraPreviewViewportProps> = ({
     });
 
     const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false;
+    geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 100000);
     scene.add(points);
     pointsRef.current = points;
 
